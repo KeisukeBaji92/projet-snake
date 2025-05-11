@@ -5,7 +5,7 @@ function App() {
   return (
     <div>
       <h1>Projet Snake</h1>
-      <Grille rows={20} cols={20} />
+      <Grille rows={30} cols={30} />
     </div>
   );
 }
