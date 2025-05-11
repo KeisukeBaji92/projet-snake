@@ -18,39 +18,67 @@ const Grille = ({ rows, cols }) => {
     { x: rows - 1, y: cols - 3 }   // Queue
   ]);
 
-  // Fonctions pour mettre à jour la direction
-  const updateDirection1 = (newDirection) => setDirection1(newDirection);
-  const updateDirection2 = (newDirection) => setDirection2(newDirection);
+  // Gestion des touches du clavier
+  const handleKeyDown = (event) => {
+    switch (event.key) {
+      // Contrôles pour le serpent 1 (flèches)
+      case "ArrowUp":
+        if (direction1.x !== 1) setDirection1({ x: -1, y: 0 });
+        break;
+      case "ArrowDown":
+        if (direction1.x !== -1) setDirection1({ x: 1, y: 0 });
+        break;
+      case "ArrowLeft":
+        if (direction1.y !== 1) setDirection1({ x: 0, y: -1 });
+        break;
+      case "ArrowRight":
+        if (direction1.y !== -1) setDirection1({ x: 0, y: 1 });
+        break;
 
-  // Fonction de déplacement des serpents
-  const moveSnake1 = () => {
-    setSnake1((prev) => {
-      const newHead = {
-        x: (prev[0].x + direction1.x + rows) % rows,
-        y: (prev[0].y + direction1.y + cols) % cols,
-      };
-      const newBody = [newHead, ...prev.slice(0, -1)];
-      return newBody;
-    });
+      // Contrôles pour le serpent 2 (WASD)
+      case "w":
+        if (direction2.x !== 1) setDirection2({ x: -1, y: 0 });
+        break;
+      case "s":
+        if (direction2.x !== -1) setDirection2({ x: 1, y: 0 });
+        break;
+      case "a":
+        if (direction2.y !== 1) setDirection2({ x: 0, y: -1 });
+        break;
+      case "d":
+        if (direction2.y !== -1) setDirection2({ x: 0, y: 1 });
+        break;
+      default:
+        break;
+    }
   };
 
-  const moveSnake2 = () => {
-    setSnake2((prev) => {
-      const newHead = {
-        x: (prev[0].x + direction2.x + rows) % rows,
-        y: (prev[0].y + direction2.y + cols) % cols,
-      };
-      const newBody = [newHead, ...prev.slice(0, -1)];
-      return newBody;
-    });
+  // Attacher l'événement clavier globalement
+  useEffect(() => {
+    const handleKeyDownGlobal = (event) => handleKeyDown(event);
+    window.addEventListener("keydown", handleKeyDownGlobal);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDownGlobal);
+    };
+  }, [direction1, direction2]);
+
+  // Fonction de déplacement des serpents
+  const moveSnake = (snake, direction) => {
+    const newHead = {
+      x: (snake[0].x + direction.x + rows) % rows,
+      y: (snake[0].y + direction.y + cols) % cols,
+    };
+    const newSnake = [newHead, ...snake.slice(0, -1)];
+    return newSnake;
   };
 
   // Déplacement automatique
   useEffect(() => {
     const interval = setInterval(() => {
-      moveSnake1();
-      moveSnake2();
-    }, 500); // Vitesse ajustée pour bien voir le déplacement
+      setSnake1((prev) => moveSnake(prev, direction1));
+      setSnake2((prev) => moveSnake(prev, direction2));
+    }, 200);
     return () => clearInterval(interval);
   }, [direction1, direction2]);
 
