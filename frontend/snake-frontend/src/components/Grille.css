@@ -1,0 +1,15 @@
+.grid {
+    display: inline-block;
+    margin: 20px;
+}
+
+.row {
+    display: flex;
+}
+
+.cell {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #000;
+    background-color: #eee;
+}
