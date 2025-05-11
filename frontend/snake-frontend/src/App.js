@@ -6,7 +6,7 @@ function App() {
     return (
         <div>
             <h1>Projet Snake</h1>
-            <Grille rows={10} cols={10} />
+            <Grille rows={20} cols={20} />
         </div>
     );
 }
