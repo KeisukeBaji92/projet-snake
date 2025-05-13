@@ -10,7 +10,7 @@
 ### Étapes
 
 ```bash
-git clone https://github.com/TON_UTILISATEUR/projet-snake.git
+git clone https://github.com/KeisukeBaji92/projet-snake.git
 cd projet-snake
 
 # Installation du backend
