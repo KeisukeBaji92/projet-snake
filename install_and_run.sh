@@ -26,3 +26,5 @@ npm install
 
 echo "🚀 Lancement du frontend..."
 npm start
+
+read -p "Appuyez sur une touche pour fermer"
