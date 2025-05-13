@@ -165,4 +165,3 @@ export default function SnakeBoard({ rows = 20, cols = 30 }) {
     </div>
   );
 }
-
