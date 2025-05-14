@@ -1,30 +1,63 @@
-# Vérification de la présence de node
+#!/bin/bash
+
+# ======================
+# INSTALLATION SCRIPT POUR LE PROJET SNAKE
+# ======================
+
+# Couleurs pour plus de fun 😎
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# ======================
+# ÉTAPE 1 – Vérifier si Node.js est installé
+# ======================
+echo -e "${GREEN}📦 Vérification de Node.js...${NC}"
 if ! command -v node &> /dev/null; then
-    echo "🚨 Node.js n'est pas installé sur votre système."
-    echo -n "❓ Souhaitez-vous l'installer maintenant ? (y/n) : "
+    echo -e "${RED}🚨 Node.js n'est pas installé.${NC}"
+    echo -n "❓ Voulez-vous l'installer maintenant ? (y/n) : "
     read -r reponse
     if [[ "$reponse" =~ ^[Yy]$ ]]; then
-        echo "🚀 Installation de Node.js en cours..."
+        echo -e "${GREEN}🚀 Installation de Node.js en cours...${NC}"
 
-        # Détection du système
         OS=$(uname)
         if [[ "$OS" == "Linux" ]]; then
-            # Installation pour Linux (Debian/Ubuntu)
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
             sudo apt-get install -y nodejs
         elif [[ "$OS" == "Darwin" ]]; then
-            # Installation pour macOS (via Homebrew)
             if ! command -v brew &> /dev/null; then
-                echo "❌ Homebrew n'est pas installé. Veuillez l'installer manuellement depuis https://brew.sh/"
+                echo -e "${RED}❌ Homebrew est requis pour installer Node.js sur macOS. Installez-le depuis https://brew.sh/${NC}"
                 exit 1
             fi
             brew install node
         else
-            echo "❌ Système non reconnu. Veuillez installer Node.js manuellement."
+            echo -e "${RED}❌ Système non reconnu. Veuillez installer Node.js manuellement.${NC}"
             exit 1
         fi
     else
-        echo "⛔ Installation de Node.js annulée. Le script ne peut pas continuer."
+        echo -e "${RED}⛔ Installation annulée. Le script ne peut pas continuer.${NC}"
         exit 1
     fi
+else
+    echo -e "${GREEN}✅ Node.js est déjà installé.${NC}"
+fi
+
+# ======================
+# ÉTAPE 2 – Installation des dépendances
+# ======================
+echo -e "${GREEN}📦 Installation des dépendances npm...${NC}"
+cd frontend || exit 1
+npm install
+
+# ======================
+# ÉTAPE 3 – Lancer le serveur React
+# ======================
+echo -e "${GREEN}🚀 Lancement du serveur frontend...${NC}"
+# Lancer avec une pause pour que la fenêtre reste ouverte sur Windows
+if [[ "$OS" == "MINGW"* || "$OS" == *"MSYS"* || "$OS" == *"CYGWIN"* ]]; then
+    npm start
+    echo -e "${GREEN}Appuyez sur une touche pour fermer...${NC}"
+    read -n 1
+else
+    npm start
 fi
