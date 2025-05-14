@@ -6,6 +6,9 @@ export default function SnakeBoard({ rows = 20, cols = 30 }) {
   const dir2 = useRef({ x: 0, y: -1 });
   const isOpposite = (a, b) => a.x === -b.x && a.y === -b.y;
 
+  /*── NEW: verrou “une seule touche par frame” ──*/
+  const lockDir = useRef(false);
+
   /*── Vitesse fluide (refs) ──*/
   const initialSpeed = 200;
   const speedRef     = useRef(initialSpeed);
@@ -67,16 +70,17 @@ export default function SnakeBoard({ rows = 20, cols = 30 }) {
   /*── Clavier ──*/
   useEffect(() => {
     const onKey = ({key}) => {
+      if (lockDir.current) return;               // ← ignore après la 1ʳᵉ touche
       /* flèches */
-      if (key==='ArrowUp'   && !isOpposite(dir1.current,{x:-1,y:0})) dir1.current={x:-1,y:0};
-      if (key==='ArrowDown' && !isOpposite(dir1.current,{x:1,y:0}))  dir1.current={x:1,y:0};
-      if (key==='ArrowLeft' && !isOpposite(dir1.current,{x:0,y:-1})) dir1.current={x:0,y:-1};
-      if (key==='ArrowRight'&& !isOpposite(dir1.current,{x:0,y:1}))  dir1.current={x:0,y:1};
+      if (key==='ArrowUp'   && !isOpposite(dir1.current,{x:-1,y:0})) {dir1.current={x:-1,y:0}; lockDir.current = true; return; }
+      if (key==='ArrowDown' && !isOpposite(dir1.current,{x:1,y:0}))  {dir1.current={x:1,y:0}; lockDir.current = true; return; }
+      if (key==='ArrowLeft' && !isOpposite(dir1.current,{x:0,y:-1})) {dir1.current={x:0,y:-1}; lockDir.current = true; return; }
+      if (key==='ArrowRight'&& !isOpposite(dir1.current,{x:0,y:1}))  {dir1.current={x:0,y:1}; lockDir.current = true; return; }
       /* wasd */
-      if (key==='w' && !isOpposite(dir2.current,{x:-1,y:0})) dir2.current={x:-1,y:0};
-      if (key==='s' && !isOpposite(dir2.current,{x:1,y:0}))  dir2.current={x:1,y:0};
-      if (key==='a' && !isOpposite(dir2.current,{x:0,y:-1})) dir2.current={x:0,y:-1};
-      if (key==='d' && !isOpposite(dir2.current,{x:0,y:1}))  dir2.current={x:0,y:1};
+      if (key==='w' && !isOpposite(dir2.current,{x:-1,y:0})) {dir2.current={x:-1,y:0}; lockDir.current = true; return; }
+      if (key==='s' && !isOpposite(dir2.current,{x:1,y:0}))  {dir2.current={x:1,y:0}; lockDir.current = true; return; }
+      if (key==='a' && !isOpposite(dir2.current,{x:0,y:-1})) {dir2.current={x:0,y:-1}; lockDir.current = true; return; }
+      if (key==='d' && !isOpposite(dir2.current,{x:0,y:1}))  {dir2.current={x:0,y:1}; lockDir.current = true; return; }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -88,6 +92,7 @@ export default function SnakeBoard({ rows = 20, cols = 30 }) {
   };
 
   const gameTick = () => {
+    lockDir.current = false;
     if (!running) return;
 
     /* états courants au moment T */
