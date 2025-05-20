@@ -1,27 +1,29 @@
-// components/Grille.js
+// src/components/Grille.js
 import React, { useState, useEffect, useRef } from 'react';
 
 export default function SnakeBoard({ rows = 20, cols = 30 }) {
-  // Directions (refs) – initialisées mais recalculées par le bot
+  // Bot directions
   const dir1 = useRef({ x: 0, y: 1 });
   const dir2 = useRef({ x: 0, y: -1 });
+  const prevDir1 = useRef({ x: 0, y: 1 });
+  const prevDir2 = useRef({ x: 0, y: -1 });
 
-  // Vitesse et boucle
+  // Speed settings
   const initialSpeed = 200;
-  const speedRef = useRef(initialSpeed);
-  const loopIdRef = useRef(null);
-  const minSpeed = 60;
-  const decay = 0.95;
+  const minSpeed     =  60;
+  const decay        = 0.95;
+  const speedRef     = useRef(initialSpeed);
+  const loopRef      = useRef(null);
 
-  // États React
+  // Game state
   const [snake1, setSnake1] = useState([]);
   const [snake2, setSnake2] = useState([]);
-  const [food, setFood]   = useState(null);
+  const [food, setFood]     = useState(null);
   const [scores, setScores] = useState({ s1: 0, s2: 0 });
   const [status, setStatus] = useState('');
   const [running, setRunning] = useState(false);
 
-  // Refs synchronisées
+  // Refs to sync state
   const s1Ref = useRef(snake1);
   const s2Ref = useRef(snake2);
   const foodRef = useRef(food);
@@ -29,124 +31,165 @@ export default function SnakeBoard({ rows = 20, cols = 30 }) {
   useEffect(() => { s2Ref.current = snake2; }, [snake2]);
   useEffect(() => { foodRef.current = food; }, [food]);
 
-  // Pure helpers
-  const posKey = ({ x, y }) => `${x},${y}`;
-  const hitsWall = ({ x, y }) => x < 0 || x >= rows || y < 0 || y >= cols;
-  const advance = (snake, dir, grow = false) => {
-    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-    return grow ? [head, ...snake] : [head, ...snake.slice(0, -1)];
-  };
-  const spawnFood = (occupied) => {
+  // Helpers
+  const posKey = p => `${p.x},${p.y}`;
+  const hitsWall = p => p.x < 0 || p.x >= rows || p.y < 0 || p.y >= cols;
+  const spawnFood = occupied => {
     while (true) {
-      const p = { x: ~~(Math.random()*rows), y: ~~(Math.random()*cols) };
-      if (!occupied.some(s => s.x===p.x && s.y===p.y)) return p;
+      const p = { x: Math.floor(Math.random()*rows), y: Math.floor(Math.random()*cols) };
+      if (!occupied.some(o => o.x === p.x && o.y === p.y)) return p;
     }
   };
-
-  // Bot « greedy »
-  const getBotDir = (head, target) => {
+  // Greedy bot with avoidance
+  const getBotDir = (head, body, otherBody, target) => {
     const dx = target.x - head.x;
     const dy = target.y - head.y;
+    const options = [];
+    // primary and secondary
     if (Math.abs(dx) > Math.abs(dy)) {
-      return { x: Math.sign(dx), y: 0 };
+      options.push({ x: Math.sign(dx), y: 0 }, { x: 0, y: Math.sign(dy) });
     } else {
-      return { x: 0, y: Math.sign(dy) };
+      options.push({ x: 0, y: Math.sign(dy) }, { x: Math.sign(dx), y: 0 });
     }
+    // all directions fallback
+    options.push({ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 });
+    for (const d of options) {
+      const next = { x: head.x + d.x, y: head.y + d.y };
+      if (!hitsWall(next)
+          && !body.some(p => p.x===next.x && p.y===next.y)
+          && !otherBody.some(p => p.x===next.x && p.y===next.y)) {
+        return d;
+      }
+    }
+    // no safe, keep prev
+    return body === s1Ref.current ? prevDir1.current : prevDir2.current;
   };
 
-  // Init / restart
+  // Initialize/reset
   const resetGame = () => {
     const s1 = [ {x:0,y:4},{x:0,y:3},{x:0,y:2},{x:0,y:1},{x:0,y:0} ];
-    const s2 = [
-      {x:rows-1,y:cols-5},{x:rows-1,y:cols-4},
-      {x:rows-1,y:cols-3},{x:rows-1,y:cols-2},
-      {x:rows-1,y:cols-1},
-    ];
-    setSnake1(s1);  setSnake2(s2);
-    const f = spawnFood([...s1, ...s2]);
+    const s2 = [ {x:rows-1,y:cols-5},{x:rows-1,y:cols-4},{x:rows-1,y:cols-3},{x:rows-1,y:cols-2},{x:rows-1,y:cols-1} ];
+    const f  = spawnFood([...s1, ...s2]);
+
+    setSnake1(s1);
+    setSnake2(s2);
     setFood(f);
     setScores({ s1:0, s2:0 });
     setStatus('');
-    s1Ref.current = s1; s2Ref.current = s2; foodRef.current = f;
-    dir1.current = { x: 0, y: 1 }; dir2.current = { x: 0, y: -1 };
+    dir1.current = { x:0, y:1 };
+    dir2.current = { x:0, y:-1 };
+    prevDir1.current = { ...dir1.current };
+    prevDir2.current = { ...dir2.current };
     speedRef.current = initialSpeed;
-    clearTimeout(loopIdRef.current);
+    clearTimeout(loopRef.current);
     setRunning(true);
   };
   useEffect(resetGame, []);
 
-  // Boucle de jeu
+  // Main loop
   const scheduleNext = () => {
-    loopIdRef.current = setTimeout(gameTick, speedRef.current);
+    loopRef.current = setTimeout(gameTick, speedRef.current);
   };
-
-  const gameTick = () => {
+  function gameTick() {
     if (!running) return;
 
-    const s1 = s1Ref.current, s2 = s2Ref.current, f = foodRef.current;
+    const oldS1 = s1Ref.current;
+    const oldS2 = s2Ref.current;
+    const f     = foodRef.current;
 
-    // 0) On remplace le clavier par le bot
-    dir1.current = getBotDir(s1[0], f);
-    dir2.current = getBotDir(s2[0], f);
+    const oldDir1 = { ...dir1.current };
+    const oldDir2 = { ...dir2.current };
 
-    // 1) prochains têtes
-    const head1 = { x: s1[0].x + dir1.current.x, y: s1[0].y + dir1.current.y };
-    const head2 = { x: s2[0].x + dir2.current.x, y: s2[0].y + dir2.current.y };
+    // compute new dirs
+    const newDir1 = getBotDir(oldS1[0], oldS1, oldS2, f);
+    const newDir2 = getBotDir(oldS2[0], oldS2, oldS1, f);
+    dir1.current = newDir1;
+    dir2.current = newDir2;
+    prevDir1.current = oldDir1;
+    prevDir2.current = oldDir2;
 
-    // 2) sets de corps
-    const body1 = new Set(s1.slice(1).map(posKey));
-    const body2 = new Set(s2.slice(1).map(posKey));
+    // new heads
+    const head1 = { x: oldS1[0].x + newDir1.x, y: oldS1[0].y + newDir1.y };
+    const head2 = { x: oldS2[0].x + newDir2.x, y: oldS2[0].y + newDir2.y };
 
-    // 3) collisions
-    const headOnHead = head1.x===head2.x && head1.y===head2.y;
-    const s1Lose = hitsWall(head1)||body1.has(posKey(head1))||body2.has(posKey(head1));
-    const s2Lose = hitsWall(head2)||body2.has(posKey(head2))||body1.has(posKey(head2));
-
-    if (headOnHead || (s1Lose && s2Lose)) { setStatus('Match nul !'); setRunning(false); return; }
-    if (s1Lose) { setStatus('Le Serpent 1 a perdu !'); setRunning(false); return; }
-    if (s2Lose) { setStatus('Le Serpent 2 a perdu !'); setRunning(false); return; }
-
-    // 4) apple ?
+    // eaten?
     const ate1 = head1.x===f.x && head1.y===f.y;
     const ate2 = head2.x===f.x && head2.y===f.y;
-    let newFood = f, newScores = {...scores};
-    if (ate1 || ate2) {
-      newFood = spawnFood([...s1, ...s2, head1, head2]);
-      if (ate1) { newScores.s1++; speedRef.current = Math.max(minSpeed, speedRef.current*decay); }
-      if (ate2) { newScores.s2++; speedRef.current = Math.max(minSpeed, speedRef.current*decay); }
+
+    // new bodies
+    const newS1 = ate1 ? [head1, ...oldS1] : [head1, ...oldS1.slice(0,-1)];
+    const newS2 = ate2 ? [head2, ...oldS2] : [head2, ...oldS2.slice(0,-1)];
+
+    // head-on
+    if (head1.x===head2.x && head1.y===head2.y) {
+      const moved1 = newDir1.x!==oldDir1.x || newDir1.y!==oldDir1.y;
+      const moved2 = newDir2.x!==oldDir2.x || newDir2.y!==oldDir2.y;
+      if (moved1 && !moved2) setStatus('Le Serpent 1 a perdu !');
+      else if (moved2 && !moved1) setStatus('Le Serpent 2 a perdu !');
+      else setStatus('Match nul !');
+      setRunning(false);
+      return;
     }
 
-    // 5) avancée des serpents
-    const newS1 = ate1 ? [head1, ...s1] : [head1, ...s1.slice(0,-1)];
-    const newS2 = ate2 ? [head2, ...s2] : [head2, ...s2.slice(0,-1)];
+    // swap
+    const oH1 = oldS1[0], oH2 = oldS2[0];
+    if (head1.x===oH2.x && head1.y===oH2.y && head2.x===oH1.x && head2.y===oH1.y) {
+      setStatus('Match nul !');
+      setRunning(false);
+      return;
+    }
 
-    // 6) update états
-    setSnake1(newS1); s1Ref.current = newS1;
-    setSnake2(newS2); s2Ref.current = newS2;
-    setFood(newFood); foodRef.current = newFood;
-    setScores(newScores);
+    // normal collisions
+    const b1 = newS1.slice(1), b2 = newS2.slice(1);
+    const s1Lose = hitsWall(head1) || b1.some(p=>p.x===head1.x&&p.y===head1.y) || b2.some(p=>p.x===head1.x&&p.y===head1.y);
+    const s2Lose = hitsWall(head2) || b2.some(p=>p.x===head2.x&&p.y===head2.y) || b1.some(p=>p.x===head2.x&&p.y===head2.y);
+    if (s1Lose && s2Lose) {
+      setStatus('Match nul !'); setRunning(false); return;
+    } else if (s1Lose) {
+      setStatus('Le Serpent 1 a perdu !'); setRunning(false); return;
+    } else if (s2Lose) {
+      setStatus('Le Serpent 2 a perdu !'); setRunning(false); return;
+    }
 
-    // 7) boucle suivante
+            // apple eaten? spawn new food and update score
+    let newFood = f;
+    if (ate1 || ate2) {
+      // update score
+      setScores(prev => ({
+        s1: prev.s1 + (ate1 ? 1 : 0),
+        s2: prev.s2 + (ate2 ? 1 : 0)
+      }));
+      // spawn new apple
+      newFood = spawnFood([...newS1, ...newS2]);
+      // accelerate
+      speedRef.current = Math.max(minSpeed, speedRef.current * decay);
+    }
+
+    // apply positions & food
+    setSnake1(newS1);
+    setSnake2(newS2);
+    setFood(newFood);
+
     scheduleNext();
-  };
+  }
 
   useEffect(() => {
     if (running) scheduleNext();
-    return () => clearTimeout(loopIdRef.current);
+    return () => clearTimeout(loopRef.current);
   }, [running]);
 
-  // Rendu
+  // render grid
   const grid = [];
-  for (let r=0; r<rows; r++){
+  for (let r = 0; r < rows; r++) {
     const row = [];
-    for (let c=0; c<cols; c++){
-      const in1 = snake1.some(s=>s.x===r&&s.y===c);
-      const in2 = snake2.some(s=>s.x===r&&s.y===c);
-      const isFood = food && food.x===r && food.y===c;
+    for (let c = 0; c < cols; c++) {
+      const in1 = snake1.some(p=>p.x===r&&p.y===c);
+      const in2 = snake2.some(p=>p.x===r&&p.y===c);
+      const fCell = food && food.x===r && food.y===c;
       row.push(
         <div key={`${r}-${c}`} style={{
           width:20, height:20,
-          backgroundColor: isFood ? 'red' : in1 ? 'green' : in2 ? 'blue' : 'lightgrey',
+          backgroundColor: fCell?'red':in1?'green':in2?'blue':'lightgrey',
           border:'1px solid #222'
         }}/>
       );
@@ -155,13 +198,10 @@ export default function SnakeBoard({ rows = 20, cols = 30 }) {
   }
 
   return (
-    <div style={{
-      display:'flex', flexDirection:'column',
-      justifyItems:'center', alignItems:'center', height:'100vh'
-    }}>
-      <h2>{status || `Scores | Vert : ${scores.s1}  Bleu : ${scores.s2}`}</h2>
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', height:'100vh' }}>
+      <h2>{status || `Scores | Vert: ${scores.s1} Bleu: ${scores.s2}`}</h2>
       <div>{grid}</div>
-      {!running && <button style={{ marginTop:16 }} onClick={resetGame}>Restart</button>}
+      {!running && <button onClick={resetGame} style={{ marginTop:16 }}>Restart</button>}
     </div>
   );
 }
