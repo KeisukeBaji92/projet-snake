@@ -30,7 +30,7 @@ const Timer = memo(function Timer({ startTime, isRunning }) {
   }, [startTime, isRunning]);
 
   return (
-    <div style={{ fontSize: 24, color: '#8ac926' }}>
+    <div className="timer">
       Temps : {formatTime(time)}
     </div>
   );
@@ -100,15 +100,15 @@ export default function SnakeGame({
   }, [userMove, userMove2, mode, handleGameOver, rows, cols]);
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ marginTop: 20, position: 'relative' }}>
+      <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 8, display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
         <div>
           <span style={{ color: COL_S1 }}>ROUGE : {score.s1}</span>
           &nbsp;&nbsp;
           <span style={{ color: COL_S2 }}>BLEU : {score.s2}</span>
         </div>
-        <Timer startTime={startTimeRef.current} isRunning={isRunning} />
       </div>
+      <Timer startTime={startTimeRef.current} isRunning={isRunning} />
       <canvas
         ref={canvas}
         width={cols * CELL}

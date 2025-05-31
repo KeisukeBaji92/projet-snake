@@ -88,14 +88,34 @@
   margin-bottom: 2rem;
 }
 
-.game-container {
+.game-section {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 2rem auto;
-  padding: 2rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 15px;
+  width: 100%;
+  margin-top: 2rem;
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   max-width: 800px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  margin: 0 auto;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+/* Style pour le timer */
+.timer {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  color: #8ac926;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
 } 

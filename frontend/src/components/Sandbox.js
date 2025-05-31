@@ -1,141 +1,159 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import SnakeGame from './SnakeGame';
-import { defaultScript, scriptBaladeur } from './defaultScripts';
 import './Sandbox.css';
 
-export default function Sandbox() {
-  const [code1, setCode1] = useState(defaultScript);
-  const [code2, setCode2] = useState(scriptBaladeur);
-  const [script1, setScript1] = useState(null);
-  const [script2, setScript2] = useState(null);
-  const [mode, setMode] = useState('mirror');
-  const [key, setKey] = useState(0);
+const defaultScript = `function nextMove(state) {
+  const head = state.me[0];
+  const food = state.food;
+  
+  if (food.y < head.y) return 'left';
+  if (food.y > head.y) return 'right';
+  if (food.x < head.x) return 'up';
+  return 'down';
+}`;
+
+const Sandbox = () => {
+  const [script1, setScript1] = useState(defaultScript);
+  const [script2, setScript2] = useState('');
+  const [mode, setMode] = useState('vs-greedy');
+  const [gameKey, setGameKey] = useState(0);
+  const [showGame, setShowGame] = useState(false);
+  const [gameResult, setGameResult] = useState(null);
   const gameRef = useRef(null);
 
-  const loadScripts = useCallback(() => {
-    if (!code1.trim()) {
-      alert('Script 1 vide !');
-      return;
-    }
+  const handleScript1Change = (e) => {
+    setScript1(e.target.value);
+  };
 
+  const handleScript2Change = (e) => {
+    setScript2(e.target.value);
+  };
+
+  const handleModeChange = (e) => {
+    setMode(e.target.value);
+    setShowGame(false);
+  };
+
+  const handleStart = () => {
+    setGameKey(prev => prev + 1);
+    setShowGame(true);
+    setGameResult(null);
+    setTimeout(() => {
+      gameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  };
+
+  const handleGameEnd = (result) => {
+    setGameResult(result);
+    console.log('Partie terminée:', result);
+  };
+
+  const evaluateScript1 = (state) => {
     try {
-      // Compilation sécurisée des scripts
-      const fn1 = compileScript(code1, 'Script 1');
-      const fn2 = code2.trim() ? compileScript(code2, 'Script 2') : null;
-
-      setScript1(() => fn1);
-      setScript2(() => fn2);
-      setKey(k => k + 1);
-
-      // Scroll vers le jeu après un court délai pour laisser le temps au composant de se monter
-      setTimeout(() => {
-        gameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    } catch (e) {
-      alert('Erreur de compilation : ' + e.message);
+      const fn = new Function('state', script1 + '\nreturn nextMove(state);');
+      return fn(state);
+    } catch (error) {
+      console.error('Erreur dans le script 1:', error);
+      return 'right';
     }
-  }, [code1, code2]);
+  };
+
+  const evaluateScript2 = (state) => {
+    if (!script2) return null;
+    try {
+      const fn = new Function('state', script2 + '\nreturn nextMove(state);');
+      return fn(state);
+    } catch (error) {
+      console.error('Erreur dans le script 2:', error);
+      return 'left';
+    }
+  };
 
   return (
-    <div className="sandbox">
-      <h1>Snake Arena - Sandbox</h1>
-
-      <div className="code-container">
-        <div className="code-editor">
-          <h3>Script 1 (Rouge)</h3>
-          <textarea
-            placeholder="function nextMove(state) { return 'right'; }"
-            value={code1}
-            onChange={e => setCode1(e.target.value)}
-          />
+    <div className="container">
+      <h2 className="mb-4">Mode Sandbox</h2>
+      
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <div className="form-group">
+            <label htmlFor="script1">Script Rouge</label>
+            <textarea
+              id="script1"
+              className="form-control font-monospace"
+              rows="10"
+              value={script1}
+              onChange={handleScript1Change}
+              style={{ minHeight: '400px' }}
+            />
+          </div>
         </div>
+        
+        {mode === 'script-vs-script' && (
+          <div className="col-md-6">
+            <div className="form-group">
+              <label htmlFor="script2">Script Bleu</label>
+              <textarea
+                id="script2"
+                className="form-control font-monospace"
+                rows="10"
+                value={script2}
+                onChange={handleScript2Change}
+                style={{ minHeight: '400px' }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
-        <div className="code-editor">
-          <h3>Script 2 (Bleu)</h3>
-          <textarea
-            placeholder="// facultatif sauf pour le duel"
-            value={code2}
-            onChange={e => setCode2(e.target.value)}
-          />
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <div className="form-group">
+            <label htmlFor="mode">Mode de jeu</label>
+            <select
+              id="mode"
+              className="form-control"
+              value={mode}
+              onChange={handleModeChange}
+            >
+              <option value="vs-greedy">Contre Bot Greedy</option>
+              <option value="mirror">Mode Miroir</option>
+              <option value="script-vs-script">Script vs Script</option>
+            </select>
+          </div>
+        </div>
+        <div className="col-md-6">
+          <button
+            className="btn btn-primary mt-4"
+            onClick={handleStart}
+          >
+            {showGame ? 'Redémarrer' : 'Lancer'} la partie
+          </button>
         </div>
       </div>
 
-      <div className="controls">
-        <button onClick={loadScripts}>Charger & lancer</button>
-      </div>
-
-      <div className="game-mode-selector">
-        <label>
-          <input
-            type="radio"
-            checked={mode === 'mirror'}
-            onChange={() => { setMode('mirror'); setKey(k => k + 1); }}
-          /> Mirror
-        </label>
-        <label>
-          <input
-            type="radio"
-            checked={mode === 'greedy'}
-            onChange={() => { setMode('greedy'); setKey(k => k + 1); }}
-          /> Vs Greedy
-        </label>
-        <label>
-          <input
-            type="radio"
-            checked={mode === 'duel'}
-            onChange={() => { setMode('duel'); setKey(k => k + 1); }}
-          /> Script 1 vs Script 2
-        </label>
-        <button onClick={() => setKey(k => k + 1)}>Reset game</button>
-      </div>
-
-      {script1 && (
-        <div ref={gameRef} className="game-container">
-          <SnakeGame
-            key={key}
-            userMove={script1}
-            userMove2={script2}
-            mode={mode}
-            onEnd={w => alert('Partie terminée – gagnant : ' + w)}
-          />
+      {showGame && (
+        <div className="game-section" ref={gameRef}>
+          <div className="game-container">
+            {gameResult && (
+              <div className="alert alert-info text-center mb-3">
+                {gameResult.winner === 'snake1' ? 'Le Serpent Rouge a gagné !' : 
+                 gameResult.winner === 'snake2' ? 'Le Serpent Bleu a gagné !' : 
+                 'Match nul !'}
+                {gameResult.reason && ` (${gameResult.reason})`}
+              </div>
+            )}
+            <SnakeGame
+              key={gameKey}
+              userMove={evaluateScript1}
+              userMove2={mode === 'script-vs-script' ? evaluateScript2 : null}
+              mode={mode}
+              onEnd={handleGameEnd}
+            />
+          </div>
         </div>
       )}
     </div>
   );
-}
+};
 
-function compileScript(src, label) {
-  try {
-    // Vérifier la présence de la fonction nextMove
-    if (!src.includes('function nextMove')) {
-      throw new Error(`${label} : fonction nextMove manquante`);
-    }
-
-    // Créer une fonction sécurisée
-    const scriptFn = new Function('state', `
-      ${src}
-      if (typeof nextMove !== 'function') {
-        throw new Error('${label} : fonction nextMove manquante');
-      }
-      return nextMove(state);
-    `);
-
-    // Tester la fonction avec un état factice
-    const testState = {
-      rows: 20,
-      cols: 20,
-      me: [{x: 0, y: 0}],
-      you: [{x: 19, y: 19}],
-      food: {x: 10, y: 10}
-    };
-
-    const result = scriptFn(testState);
-    if (!['up', 'down', 'left', 'right'].includes(result)) {
-      throw new Error(`${label} : direction invalide retournée`);
-    }
-
-    return scriptFn;
-  } catch (e) {
-    throw new Error(`${label} : ${e.message}`);
-  }
-} 
+export default Sandbox; 
