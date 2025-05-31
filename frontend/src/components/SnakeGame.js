@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
 
 const CELL = 24;
 const TICK = 200;
@@ -7,6 +7,34 @@ const COL_BG   = '#1e1e1e';
 const COL_S1   = '#ff595e';
 const COL_S2   = '#1982c4';
 const COL_FOOD = '#8ac926';
+
+// Composant Timer optimisé avec memo pour éviter les re-rendus inutiles
+const Timer = memo(function Timer({ startTime, isRunning }) {
+  const [time, setTime] = useState(0);
+  const frameRef = useRef();
+
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const updateTimer = () => {
+      setTime(Math.floor((Date.now() - startTime) / 1000));
+      frameRef.current = requestAnimationFrame(updateTimer);
+    };
+    frameRef.current = requestAnimationFrame(updateTimer);
+
+    return () => {
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, [startTime, isRunning]);
+
+  return (
+    <div style={{ fontSize: 24, color: '#8ac926' }}>
+      Temps : {formatTime(time)}
+    </div>
+  );
+});
 
 export default function SnakeGame({
   userMove,
@@ -19,13 +47,28 @@ export default function SnakeGame({
   const canvas = useRef(null);
   const state = useRef(initState(rows, cols));
   const [score, setScore] = useState({ s1: 0, s2: 0 });
+  const startTimeRef = useRef(Date.now());
+  const [isRunning, setIsRunning] = useState(true);
+  const hasEndedRef = useRef(false);
+
+  const handleGameOver = useCallback((st) => {
+    if (!hasEndedRef.current) {
+      setIsRunning(false);
+      hasEndedRef.current = true;
+      const finalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      onEnd && onEnd(`${st.winner} (Temps : ${formatTime(finalTime)})`);
+    }
+  }, [onEnd]);
 
   useEffect(() => {
     const ctx = canvas.current.getContext('2d');
 
     const timer = setInterval(() => {
       const st = state.current;
-      if (st.gameOver) return;
+      if (st.gameOver) {
+        handleGameOver(st);
+        return;
+      }
 
       const d1 = getSafeDir(userMove, view(st, st.snake1, st.snake2), st.dir1);
 
@@ -50,19 +93,21 @@ export default function SnakeGame({
       if (changed) setScore({ s1: st.score1, s2: st.score2 });
 
       draw(ctx, st, rows, cols);
-      if (st.gameOver && onEnd) onEnd(st.winner);
     }, TICK);
 
     draw(ctx, state.current, rows, cols);
     return () => clearInterval(timer);
-  }, [userMove, userMove2, mode, onEnd, rows, cols]);
+  }, [userMove, userMove2, mode, handleGameOver, rows, cols]);
 
   return (
     <div style={{ marginTop: 20 }}>
-      <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 8 }}>
-        <span style={{ color: COL_S1 }}>ROUGE : {score.s1}</span>
-        &nbsp;&nbsp;
-        <span style={{ color: COL_S2 }}>BLEU : {score.s2}</span>
+      <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <span style={{ color: COL_S1 }}>ROUGE : {score.s1}</span>
+          &nbsp;&nbsp;
+          <span style={{ color: COL_S2 }}>BLEU : {score.s2}</span>
+        </div>
+        <Timer startTime={startTimeRef.current} isRunning={isRunning} />
       </div>
       <canvas
         ref={canvas}
@@ -72,6 +117,12 @@ export default function SnakeGame({
       />
     </div>
   );
+}
+
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 /* === Anti-crash joueur === */
