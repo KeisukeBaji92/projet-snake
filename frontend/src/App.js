@@ -6,6 +6,7 @@ import Home from './components/Home';
 import Sandbox from './components/Sandbox';
 import Login from './components/Login';
 import Register from './components/Register';
+import MyScripts from './components/MyScripts';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
@@ -28,6 +29,7 @@ function App() {
               <Route path="/sandbox" element={<Sandbox />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/scripts" element={<MyScripts />} />
             </Routes>
           </div>
         </div>

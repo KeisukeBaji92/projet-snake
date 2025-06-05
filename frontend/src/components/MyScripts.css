@@ -1,0 +1,45 @@
+.list-group-item {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+.list-group-item.active {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.list-group-item.active:hover {
+  background-color: #0b5ed7;
+}
+
+pre {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.font-monospace {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.badge {
+  font-size: 0.8em;
+}
+
+.stats .badge {
+  min-width: 80px;
+  text-align: center;
+}
+
+/* Animation pour les transitions */
+.card {
+  transition: all 0.3s ease;
+}
+
+/* Style pour le textarea de code */
+textarea.font-monospace {
+  tab-size: 2;
+} 
