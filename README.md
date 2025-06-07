@@ -30,3 +30,6 @@ node server.js
 # Dans un autre terminal, lancer le frontend
 cd ../frontend
 npm start
+```
+
+Une fois ces étapes terminées, le serveur backend sera disponible sur `http://localhost:5000` et l'interface du jeu sur `http://localhost:3000`.
