@@ -81,14 +81,14 @@ export default function SnakeGame({
         return;
       }
 
-      const d1 = getSafeDir(userMove, view(st, st.snake1, st.snake2), st.dir1, false);
+      const d1 = getSafeDir(userMove, view(st, st.snake1, st.snake2), st.dir1);
 
       let d2;
       if (mode === 'mirror') {
-        d2 = getSafeDir(userMove, view(st, st.snake2, st.snake1), st.dir2, true);
+        d2 = getSafeDir(userMove, view(st, st.snake2, st.snake1), st.dir2);
       } else if (mode === 'duel') {
         d2 = userMove2 
-          ? getSafeDir(userMove2, view(st, st.snake2, st.snake1), st.dir2, true)
+          ? getSafeDir(userMove2, view(st, st.snake2, st.snake1), st.dir2)
           : smartBot(view(st, st.snake2, st.snake1), st.dir2);
       } else {
         d2 = smartBot(view(st, st.snake2, st.snake1), st.dir2);
@@ -349,21 +349,9 @@ function formatTime(seconds) {
 }
 
 /* === Anti-crash joueur === */
-function getSafeDir(fn, state, prevDir, isSnake2) {
+function getSafeDir(fn, state, prevDir) {
   try {
     const dir = fn(state);
-    
-    // Si c'est le serpent bleu, on inverse la direction
-    if (isSnake2) {
-      const dirMap = {
-        'up': 'down',
-        'down': 'up',
-        'left': 'right',
-        'right': 'left'
-      };
-      return secureDir(dirMap[dir] || dir, prevDir);
-    }
-    
     return secureDir(dir, prevDir);
   } catch (err) {
     console.warn('Erreur dans un script joueur :', err.message);
