@@ -86,7 +86,7 @@ export default function SnakeGame({
       let d2;
       if (mode === 'mirror') {
         d2 = getSafeDir(userMove, view(st, st.snake2, st.snake1), st.dir2);
-      } else if (mode === 'duel') {
+      } else if (mode === 'script-vs-script') {
         d2 = userMove2 
           ? getSafeDir(userMove2, view(st, st.snake2, st.snake1), st.dir2)
           : smartBot(view(st, st.snake2, st.snake1), st.dir2);
@@ -190,6 +190,33 @@ export default function SnakeGame({
     );
   };
 
+  // Fonction pour dessiner des yeux sur une tête de serpent
+  const drawEyes = (ctx, x, y, color) => {
+    const centerX = y * CELL + CELL / 2;
+    const centerY = x * CELL + CELL / 2;
+    const eyeSize = CELL / 8;
+    const eyeOffset = CELL / 4;
+
+    // Yeux blancs
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(centerX - eyeOffset, centerY - eyeOffset, eyeSize, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(centerX + eyeOffset, centerY - eyeOffset, eyeSize, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Pupilles noires
+    ctx.fillStyle = 'black';
+    const pupilSize = eyeSize / 2;
+    ctx.beginPath();
+    ctx.arc(centerX - eyeOffset, centerY - eyeOffset, pupilSize, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(centerX + eyeOffset, centerY - eyeOffset, pupilSize, 0, 2 * Math.PI);
+    ctx.fill();
+  };
+
   // Mise à jour du rendu
   const draw = (ctx, st, rows, cols) => {
     ctx.clearRect(0, 0, cols * CELL, rows * CELL);
@@ -220,6 +247,14 @@ export default function SnakeGame({
 
     ctx.fillStyle = COL_S2;
     st.snake2.forEach(c => ctx.fillRect(c.y * CELL, c.x * CELL, CELL, CELL));
+
+    // Dessiner les yeux sur les têtes
+    if (st.snake1.length > 0) {
+      drawEyes(ctx, st.snake1[0].x, st.snake1[0].y, COL_S1);
+    }
+    if (st.snake2.length > 0) {
+      drawEyes(ctx, st.snake2[0].x, st.snake2[0].y, COL_S2);
+    }
 
     // En mode difficile, dessiner la zone de vision
     if (difficulty === 'hard') {
