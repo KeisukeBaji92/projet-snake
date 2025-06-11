@@ -30,22 +30,18 @@ const Home = () => {
                 <div className="card-body text-center">
                   <h3 className="card-title">Tournoi</h3>
                   <p className="card-text">Participez à des tournois et affrontez d'autres scripts.</p>
-                  <Link to="/tournament" className="btn btn-primary">Voir les tournois</Link>
+                  <Link to="/tournaments" className="btn btn-primary">Voir les tournois</Link>
                 </div>
               </div>
             </div>
           </>
         ) : (
           <div className="col-md-8 text-center">
-            <div className="card">
-              <div className="card-body">
-                <h3 className="card-title">Commencez l'aventure !</h3>
-                <p className="card-text">Connectez-vous ou inscrivez-vous pour accéder à toutes les fonctionnalités.</p>
-                <div className="d-flex justify-content-center gap-3">
-                  <Link to="/login" className="btn btn-primary">Connexion</Link>
-                  <Link to="/register" className="btn btn-outline-primary">Inscription</Link>
-                </div>
-              </div>
+            <h2>Connectez-vous pour commencer</h2>
+            <p>Créez un compte ou connectez-vous pour accéder à toutes les fonctionnalités.</p>
+            <div className="mt-4">
+              <Link to="/login" className="btn btn-primary mx-2">Connexion</Link>
+              <Link to="/register" className="btn btn-outline-primary mx-2">Inscription</Link>
             </div>
           </div>
         )}

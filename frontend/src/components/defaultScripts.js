@@ -1,38 +1,136 @@
-// Script simple par défaut
+// Script simple par défaut - maintenant évite les bombes
 export const defaultScript = `function nextMove(state) {
   const head = state.me[0];
   const food = state.food;
+  const bombs = state.bombs || [];
   
-  if (food.y < head.y) return 'left';
-  if (food.y > head.y) return 'right';
-  if (food.x < head.x) return 'up';
-  return 'down';
+  // Fonction pour vérifier si une position contient une bombe
+  function isBomb(x, y) {
+    return bombs.some(bomb => bomb.x === x && bomb.y === y);
+  }
+  
+  // Fonction pour vérifier si une direction est sûre
+  function isSafe(dir) {
+    let nextX = head.x, nextY = head.y;
+    if (dir === 'up') nextX--;
+    else if (dir === 'down') nextX++;
+    else if (dir === 'left') nextY--;
+    else if (dir === 'right') nextY++;
+    
+    // Vérifier les murs
+    if (nextX < 0 || nextX >= state.rows || nextY < 0 || nextY >= state.cols) {
+      return false;
+    }
+    
+    // Vérifier les bombes
+    if (isBomb(nextX, nextY)) {
+      return false;
+    }
+    
+    // Vérifier les collisions avec les serpents
+    const allSnakeParts = [...state.me, ...(state.you || [])];
+    for (let part of allSnakeParts) {
+      if (part.x === nextX && part.y === nextY) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  // Si on a de la nourriture visible, essayer d'aller vers elle
+  if (food) {
+    if (food.y < head.y && isSafe('left')) return 'left';
+    if (food.y > head.y && isSafe('right')) return 'right';
+    if (food.x < head.x && isSafe('up')) return 'up';
+    if (food.x > head.x && isSafe('down')) return 'down';
+  }
+  
+  // Sinon, trouver une direction sûre
+  const directions = ['up', 'down', 'left', 'right'];
+  const safeDirections = directions.filter(dir => isSafe(dir));
+  
+  if (safeDirections.length > 0) {
+    return safeDirections[0];
+  }
+  
+  // Si aucune direction n'est sûre, essayer de survivre
+  return 'right';
 }`;
 
-// Script défensif par défaut
+// Script défensif par défaut - maintenant évite les bombes
 export const defaultScript2 = `function nextMove(state) {
   const head = state.me[0];
   const food = state.food;
-  const enemy = state.you[0];
+  const enemy = state.you && state.you.length > 0 ? state.you[0] : null;
+  const bombs = state.bombs || [];
   
-  // Éviter les collisions avec les murs
-  if (head.x === 0) return 'right';
-  if (head.x === state.rows - 1) return 'left';
-  if (head.y === 0) return 'down';
-  if (head.y === state.cols - 1) return 'up';
+  // Fonction pour vérifier si une position contient une bombe
+  function isBomb(x, y) {
+    return bombs.some(bomb => bomb.x === x && bomb.y === y);
+  }
   
-  // Sinon, suivre la nourriture
-  if (food.y < head.y) return 'left';
-  if (food.y > head.y) return 'right';
-  if (food.x < head.x) return 'up';
-  return 'down';
+  // Fonction pour vérifier si une direction est sûre
+  function isSafe(dir) {
+    let nextX = head.x, nextY = head.y;
+    if (dir === 'up') nextX--;
+    else if (dir === 'down') nextX++;
+    else if (dir === 'left') nextY--;
+    else if (dir === 'right') nextY++;
+    
+    // Vérifier les murs
+    if (nextX < 0 || nextX >= state.rows || nextY < 0 || nextY >= state.cols) {
+      return false;
+    }
+    
+    // Vérifier les bombes
+    if (isBomb(nextX, nextY)) {
+      return false;
+    }
+    
+    // Vérifier les collisions avec les serpents
+    const allSnakeParts = [...state.me, ...(state.you || [])];
+    for (let part of allSnakeParts) {
+      if (part.x === nextX && part.y === nextY) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  // Éviter les bords si possible
+  const directions = ['up', 'down', 'left', 'right'];
+  const safeDirections = directions.filter(dir => isSafe(dir));
+  
+  // Si près du bord, essayer de s'éloigner
+  if (head.x <= 1 && safeDirections.includes('down')) return 'down';
+  if (head.x >= state.rows - 2 && safeDirections.includes('up')) return 'up';
+  if (head.y <= 1 && safeDirections.includes('right')) return 'right';
+  if (head.y >= state.cols - 2 && safeDirections.includes('left')) return 'left';
+  
+  // Si on a de la nourriture visible, essayer d'aller vers elle
+  if (food) {
+    if (food.y < head.y && safeDirections.includes('left')) return 'left';
+    if (food.y > head.y && safeDirections.includes('right')) return 'right';
+    if (food.x < head.x && safeDirections.includes('up')) return 'up';
+    if (food.x > head.x && safeDirections.includes('down')) return 'down';
+  }
+  
+  // Sinon, prendre une direction sûre
+  if (safeDirections.length > 0) {
+    return safeDirections[Math.floor(Math.random() * safeDirections.length)];
+  }
+  
+  return 'right';
 }`;
 
-// Script baladeur qui se concentre sur la survie
+// Script baladeur qui se concentre sur la survie - maintenant évite les bombes
 export const scriptBaladeur = `function nextMove(state) {
   const head = state.me[0];
   const body = state.me;
-  const enemy = state.you;
+  const enemy = state.you || [];
+  const bombs = state.bombs || [];
   
   // Liste des directions possibles
   const directions = ['up', 'down', 'left', 'right'];
@@ -50,6 +148,13 @@ export const scriptBaladeur = `function nextMove(state) {
     // Vérifier les murs
     if (pos.x < 0 || pos.x >= state.rows || pos.y < 0 || pos.y >= state.cols) {
       return false;
+    }
+    
+    // Vérifier les bombes
+    for (let bomb of bombs) {
+      if (bomb.x === pos.x && bomb.y === pos.y) {
+        return false;
+      }
     }
     
     // Vérifier les collisions avec notre corps

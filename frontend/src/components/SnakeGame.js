@@ -81,52 +81,100 @@ export default function SnakeGame({
         return;
       }
 
-      const d1 = getSafeDir(userMove, view(st, st.snake1, st.snake2), st.dir1);
+      // Sauvegarder les directions précédentes
+      st.prevDir1 = st.dir1;
+      st.prevDir2 = st.dir2;
+      
+      // Obtenir les mouvements des scripts avec l'état correct (vision limitée si mode difficile)
+      let move1 = 'right';
+      let move2 = 'left';
 
-      let d2;
-      if (mode === 'mirror') {
-        d2 = getSafeDir(userMove, view(st, st.snake2, st.snake1), st.dir2);
-      } else if (mode === 'script-vs-script') {
-        d2 = userMove2 
-          ? getSafeDir(userMove2, view(st, st.snake2, st.snake1), st.dir2)
-          : smartBot(view(st, st.snake2, st.snake1), st.dir2);
-      } else {
-        d2 = smartBot(view(st, st.snake2, st.snake1), st.dir2);
+      try {
+        move1 = userMove(getGameState(true)) || 'right';
+        if (mode === 'script-vs-script' && userMove2) {
+          move2 = userMove2(getGameState(false)) || 'left';
+        } else if (mode === 'mirror') {
+          move2 = move1;
+        } else {
+          // Mode vs greedy : utiliser smartBot avec le bon état
+          move2 = smartBot(getGameState(false), st.prevDir2) || 'left';
+        }
+      } catch (error) {
+        console.error('Erreur dans l\'exécution du script:', error);
       }
 
-      st.dir1 = d1;
-      st.dir2 = d2;
+      // Sécuriser les directions
+      st.dir1 = secureDir(move1, st.prevDir1);
+      st.dir2 = secureDir(move2, st.prevDir2);
 
-      move(st.snake1, d1);
-      move(st.snake2, d2);
+      // Appliquer les mouvements avec le nouveau système
+      const { newSnake: newSnake1, collision: col1, ate: ate1 } = moveSnake(st.snake1, st.dir1, st);
+      const { newSnake: newSnake2, collision: col2, ate: ate2 } = moveSnake(st.snake2, st.dir2, st);
 
-      const changed = handleCollisions(st, rows, cols);
-      if (changed) setScore({ s1: st.score1, s2: st.score2 });
+      // Mettre à jour l'état
+      st.snake1 = newSnake1;
+      st.snake2 = newSnake2;
+      st.score1 += (ate1 ? 1 : 0);
+      st.score2 += (ate2 ? 1 : 0);
+
+      // Générer nouvelle nourriture si mangée
+      if (ate1 || ate2) {
+        st.food = spawnFood(newSnake1, newSnake2, rows, cols);
+        setScore({ s1: st.score1, s2: st.score2 });
+      }
+
+      // Gérer les collisions (mort)
+      if (col1 && col2) {
+        st.gameOver = true;
+        st.winner = 'draw';
+        console.log('💥 Les deux serpents sont morts !');
+      } else if (col1) {
+        st.gameOver = true;
+        st.winner = 'snake2';
+        console.log('💥 Le serpent rouge est mort !');
+      } else if (col2) {
+        st.gameOver = true;
+        st.winner = 'snake1';
+        console.log('💥 Le serpent bleu est mort !');
+      }
 
       draw(ctx, st, rows, cols);
     }, TICK);
 
     draw(ctx, state.current, rows, cols);
     return () => clearInterval(timer);
-  }, [userMove, userMove2, mode, handleGameOver, rows, cols]);
+  }, [userMove, userMove2, mode, handleGameOver, rows, cols, bombs, difficulty]);
 
   // Initialiser les bombes pour le mode difficile
   useEffect(() => {
     if (difficulty === 'hard') {
       const newBombs = [];
+      // Créer les bombes en évitant les positions de départ des serpents
+      const occupiedPositions = [
+        {x: 3, y: 3}, {x: 3, y: 4}, {x: 3, y: 5}, // Serpent rouge
+        {x: rows-4, y: cols-4}, {x: rows-4, y: cols-5}, {x: rows-4, y: cols-6} // Serpent bleu
+      ];
+      
       while (newBombs.length < BOMB_COUNT) {
         const bomb = {
           x: Math.floor(Math.random() * rows),
           y: Math.floor(Math.random() * cols)
         };
-        // Éviter de placer des bombes sur les serpents ou la nourriture
-        if (!isPositionOccupied(bomb, [...state.current.snake1, ...state.current.snake2, state.current.food, ...newBombs])) {
+        
+        // Vérifier que la bombe n'est pas sur une position occupée
+        const isOccupied = occupiedPositions.some(pos => pos.x === bomb.x && pos.y === bomb.y) ||
+                          newBombs.some(existingBomb => existingBomb.x === bomb.x && existingBomb.y === bomb.y);
+        
+        if (!isOccupied) {
           newBombs.push(bomb);
         }
       }
+      console.log('Bombes créées:', newBombs);
       setBombs(newBombs);
+    } else {
+      setBombs([]);
     }
-  }, [difficulty]);
+  }, [difficulty, rows, cols]);
 
   // Vérifier si une position est occupée
   const isPositionOccupied = (pos, positions) => {
@@ -163,31 +211,77 @@ export default function SnakeGame({
     return grid;
   };
 
-  // Préparer l'état du jeu pour les scripts
+  // Préparer l'état du jeu pour les scripts (unifié) avec vision limitée en mode difficile
   const getGameState = (isSnake1) => {
     const head = isSnake1 ? state.current.snake1[0] : state.current.snake2[0];
-    
+    const mySnake = isSnake1 ? state.current.snake1 : state.current.snake2;
+    const enemySnake = isSnake1 ? state.current.snake2 : state.current.snake1;
+    const food = state.current.food;
+
     if (difficulty === 'hard') {
+      // Mode difficile : vision limitée à 3 cases autour de la tête
+      const VISION_RANGE = 3;
+      
+      // Fonction pour vérifier si quelque chose est dans le champ de vision
+      const isVisible = (pos) => {
+        const distance = Math.max(Math.abs(pos.x - head.x), Math.abs(pos.y - head.y));
+        return distance <= VISION_RANGE;
+      };
+      
+      // Filtrer mon serpent (seulement les parties visibles)
+      const visibleMe = mySnake.filter(segment => isVisible(segment));
+      
+      // Filtrer le serpent ennemi (seulement les parties visibles)
+      const visibleEnemy = enemySnake.filter(segment => isVisible(segment));
+      
+      // Vérifier si la nourriture est visible
+      const visibleFood = isVisible(food) ? food : null;
+      
+      // Créer la liste des bombes visibles
+      const visibleBombs = bombs.filter(bomb => isVisible(bomb));
+      
       return {
-        vision_grid: getLimitedVisionGrid(head),
-        head_position: head,
-        score: isSnake1 ? state.current.score1 : state.current.score2
+        me: visibleMe,
+        opponent: visibleEnemy,
+        you: visibleEnemy, // Alias pour compatibilité
+        food: visibleFood,
+        bombs: visibleBombs, // Ajouter les bombes à l'état
+        score: {
+          me: isSnake1 ? state.current.score1 : state.current.score2,
+          opponent: isSnake1 ? state.current.score2 : state.current.score1
+        },
+        difficulty: 'hard',
+        rows: rows,
+        cols: cols
+      };
+    } else {
+      // Mode normal : vision complète
+      return {
+        me: mySnake,
+        opponent: enemySnake,
+        you: enemySnake, // Alias pour compatibilité
+        food: food,
+        bombs: [], // Pas de bombes en mode normal
+        score: {
+          me: isSnake1 ? state.current.score1 : state.current.score2,
+          opponent: isSnake1 ? state.current.score2 : state.current.score1
+        },
+        difficulty: 'normal',
+        rows: rows,
+        cols: cols
       };
     }
-
-    return {
-      me: isSnake1 ? state.current.snake1 : state.current.snake2,
-      opponent: isSnake1 ? state.current.snake2 : state.current.snake1,
-      food: state.current.food,
-      score: isSnake1 ? state.current.score1 : state.current.score2
-    };
   };
 
   // Vérifier la collision avec une bombe
   const checkBombCollision = (head) => {
-    return difficulty === 'hard' && bombs.some(bomb => 
+    const collision = difficulty === 'hard' && bombs.some(bomb => 
       bomb.x === head.x && bomb.y === head.y
     );
+    if (collision) {
+      console.log('💥 COLLISION AVEC UNE BOMBE !', head, bombs);
+    }
+    return collision;
   };
 
   // Fonction pour dessiner des yeux sur une tête de serpent
@@ -221,19 +315,36 @@ export default function SnakeGame({
   const draw = (ctx, st, rows, cols) => {
     ctx.clearRect(0, 0, cols * CELL, rows * CELL);
 
-    // Dessiner les bombes
-    if (difficulty === 'hard') {
-      ctx.fillStyle = '#FF4444';
+    // Dessiner les bombes (toujours visibles en mode difficile)
+    if (difficulty === 'hard' && bombs.length > 0) {
+      ctx.fillStyle = '#FF0000';
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
       bombs.forEach(bomb => {
+        // Dessiner un cercle rouge avec contour blanc
         ctx.beginPath();
         ctx.arc(
           bomb.y * CELL + CELL/2,
           bomb.x * CELL + CELL/2,
-          CELL/2,
+          CELL/3,
           0,
           2 * Math.PI
         );
         ctx.fill();
+        ctx.stroke();
+        
+        // Ajouter un "X" au centre
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        const centerX = bomb.y * CELL + CELL/2;
+        const centerY = bomb.x * CELL + CELL/2;
+        const size = CELL/6;
+        ctx.beginPath();
+        ctx.moveTo(centerX - size, centerY - size);
+        ctx.lineTo(centerX + size, centerY + size);
+        ctx.moveTo(centerX + size, centerY - size);
+        ctx.lineTo(centerX - size, centerY + size);
+        ctx.stroke();
       });
     }
 
@@ -256,17 +367,33 @@ export default function SnakeGame({
       drawEyes(ctx, st.snake2[0].x, st.snake2[0].y, COL_S2);
     }
 
-    // En mode difficile, dessiner la zone de vision
+    // En mode difficile, dessiner les zones de vision des deux serpents
     if (difficulty === 'hard') {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.lineWidth = 2;
-      const head1 = st.snake1[0];
-      ctx.strokeRect(
-        (head1.y - VISION_RANGE) * CELL,
-        (head1.x - VISION_RANGE) * CELL,
-        (VISION_RANGE * 2 + 1) * CELL,
-        (VISION_RANGE * 2 + 1) * CELL
-      );
+      
+      // Zone de vision du serpent rouge
+      if (st.snake1.length > 0) {
+        ctx.strokeStyle = 'rgba(255, 89, 94, 0.6)'; // Rouge semi-transparent
+        const head1 = st.snake1[0];
+        ctx.strokeRect(
+          (head1.y - VISION_RANGE) * CELL,
+          (head1.x - VISION_RANGE) * CELL,
+          (VISION_RANGE * 2 + 1) * CELL,
+          (VISION_RANGE * 2 + 1) * CELL
+        );
+      }
+      
+      // Zone de vision du serpent bleu
+      if (st.snake2.length > 0) {
+        ctx.strokeStyle = 'rgba(25, 130, 196, 0.6)'; // Bleu semi-transparent
+        const head2 = st.snake2[0];
+        ctx.strokeRect(
+          (head2.y - VISION_RANGE) * CELL,
+          (head2.x - VISION_RANGE) * CELL,
+          (VISION_RANGE * 2 + 1) * CELL,
+          (VISION_RANGE * 2 + 1) * CELL
+        );
+      }
     }
   };
 
@@ -282,79 +409,34 @@ export default function SnakeGame({
 
     // Vérifier collision avec les murs
     if (head.x < 0 || head.x >= rows || head.y < 0 || head.y >= cols) {
+      console.log('💥 Collision avec un mur !', head);
       return { newSnake: snake, collision: true, ate: false };
     }
 
     // Vérifier collision avec les bombes en mode difficile
     if (difficulty === 'hard' && checkBombCollision(head)) {
+      console.log('💥 COLLISION AVEC UNE BOMBE !', head);
       return { newSnake: snake, collision: true, ate: false };
     }
 
-    // Vérifier collision avec soi-même ou l'autre serpent
-    if (isPositionOccupied(head, [...snake.slice(1), ...st.snake1, ...st.snake2])) {
+    // Vérifier collision avec soi-même
+    if (isPositionOccupied(head, snake.slice(1))) {
+      console.log('💥 Collision avec soi-même !', head);
       return { newSnake: snake, collision: true, ate: false };
     }
 
+    // Vérifier collision avec l'autre serpent
+    const otherSnake = snake === st.snake1 ? st.snake2 : st.snake1;
+    if (isPositionOccupied(head, otherSnake)) {
+      console.log('💥 Collision avec l\'autre serpent !', head);
+      return { newSnake: snake, collision: true, ate: false };
+    }
+
+    // Vérifier si on mange de la nourriture
     const ate = head.x === st.food.x && head.y === st.food.y;
     const newSnake = [head, ...snake.slice(0, ate ? snake.length : snake.length - 1)];
 
     return { newSnake, collision: false, ate };
-  }
-
-  function gameLoop() {
-    if (!isRunning) return;
-
-    const st = state.current;
-    
-    // Sauvegarder les directions précédentes
-    st.prevDir1 = st.dir1;
-    st.prevDir2 = st.dir2;
-    
-    // Obtenir les mouvements des scripts
-    let move1 = 'right';
-    let move2 = 'left';
-
-    try {
-      move1 = userMove(getGameState(true)) || 'right';
-      if (mode === 'script-vs-script' && userMove2) {
-        move2 = userMove2(getGameState(false)) || 'left';
-      } else if (mode === 'mirror') {
-        move2 = move1;
-      }
-    } catch (error) {
-      console.error('Erreur dans l\'exécution du script:', error);
-    }
-
-    // Mettre à jour les directions actuelles
-    st.dir1 = move1;
-    st.dir2 = move2;
-
-    // Appliquer les mouvements
-    const { newSnake: newSnake1, collision: col1, ate: ate1 } = moveSnake(st.snake1, move1, st);
-    const { newSnake: newSnake2, collision: col2, ate: ate2 } = moveSnake(st.snake2, move2, st);
-
-    // Mettre à jour l'état
-    const newState = {
-      ...st,
-      snake1: newSnake1,
-      snake2: newSnake2,
-      score1: st.score1 + (ate1 ? 1 : 0),
-      score2: st.score2 + (ate2 ? 1 : 0)
-    };
-
-    // Générer nouvelle nourriture si mangée
-    if (ate1 || ate2) {
-      newState.food = spawnFood(newSnake1, newSnake2, rows, cols);
-    }
-
-    // Vérifier fin de partie
-    if (col1 || col2) {
-      handleGameOver(newState);
-      return;
-    }
-
-    state.current = newState;
-    draw(canvas.current.getContext('2d'), newState, rows, cols);
   }
 
   return (
@@ -530,21 +612,57 @@ function placeFood(s1, s2, rows, cols) {
 }
 
 function smartBot(state, prev) {
-  const { rows, cols, food, me, you } = state;
+  const { rows, cols, food, me, you, bombs = [] } = state;
   const start = me[0];
   const blocked = new Set([...me, ...you].map(c => `${c.x},${c.y}`));
-  const queue = [{ x: start.x, y: start.y, first: null }];
-  const seen = new Set([`${start.x},${start.y}`]);
+  
+  // Ajouter les bombes aux positions bloquées
+  bombs.forEach(bomb => {
+    blocked.add(`${bomb.x},${bomb.y}`);
+  });
+  
   const DIRS = ['up', 'down', 'left', 'right'];
 
-  // Vérifier d'abord si une direction mène directement à un mur
-  function willHitWall(x, y, dir) {
-    const nx = x + DIR_VEC[dir].x;
-    const ny = y + DIR_VEC[dir].y;
-    return nx < 0 || ny < 0 || nx >= rows || ny >= cols;
+  // Fonction pour vérifier si une direction est sûre
+  function isSafe(dir) {
+    if (dir === OPP[prev]) return false;
+    const nx = start.x + DIR_VEC[dir].x;
+    const ny = start.y + DIR_VEC[dir].y;
+    if (nx < 0 || ny < 0 || nx >= rows || ny >= cols) return false;
+    return !blocked.has(`${nx},${ny}`);
   }
 
-  // Recherche de chemin vers la nourriture
+  // Trouver toutes les directions sûres
+  const safeDirs = DIRS.filter(dir => isSafe(dir));
+  
+  // Si aucune direction sûre, essayer de survivre
+  if (safeDirs.length === 0) {
+    console.log('⚠️ SmartBot: Aucune direction sûre, tentative de survie');
+    return prev;
+  }
+
+  // Si pas de nourriture visible (mode difficile), utiliser un comportement de survie
+  if (!food) {
+    console.log('🔍 SmartBot: Pas de nourriture visible, mode survie');
+    
+    // Préférer les directions qui s'éloignent des bords
+    const centerDir = safeDirs.find(dir => {
+      const nx = start.x + DIR_VEC[dir].x;
+      const ny = start.y + DIR_VEC[dir].y;
+      // Éviter les bords
+      return nx > 2 && nx < rows - 3 && ny > 2 && ny < cols - 3;
+    });
+    
+    if (centerDir) return centerDir;
+    
+    // Sinon, direction sûre aléatoire
+    return safeDirs[Math.floor(Math.random() * safeDirs.length)];
+  }
+
+  // Recherche de chemin vers la nourriture avec BFS
+  const queue = [{ x: start.x, y: start.y, first: null }];
+  const seen = new Set([`${start.x},${start.y}`]);
+
   while (queue.length) {
     const node = queue.shift();
     for (const dir of DIRS) {
@@ -556,8 +674,8 @@ function smartBot(state, prev) {
 
       const first = node.first ?? dir;
       if (nx === food.x && ny === food.y) {
-        // Vérifier si cette direction est sûre
-        if (!willHitWall(start.x, start.y, first)) {
+        // Vérifier si cette direction est dans les directions sûres
+        if (safeDirs.includes(first)) {
           return secureDir(first, prev);
         }
       }
@@ -567,16 +685,9 @@ function smartBot(state, prev) {
     }
   }
 
-  // Si pas de chemin vers la nourriture, chercher une direction sûre
-  const safeDirs = DIRS.filter(dir => {
-    if (dir === OPP[prev]) return false;
-    const nx = start.x + DIR_VEC[dir].x;
-    const ny = start.y + DIR_VEC[dir].y;
-    if (nx < 0 || ny < 0 || nx >= rows || ny >= cols) return false;
-    return !blocked.has(`${nx},${ny}`);
-  });
-
-  return safeDirs.length > 0 ? safeDirs[0] : prev;
+  // Si pas de chemin vers la nourriture, direction sûre simple
+  console.log('🤖 SmartBot: Pas de chemin vers la nourriture, direction sûre');
+  return safeDirs[0];
 }
 
 // Fonction pour générer de la nourriture à une position aléatoire libre

@@ -7,6 +7,7 @@ import Sandbox from './components/Sandbox';
 import Login from './components/Login';
 import Register from './components/Register';
 import MyScripts from './components/MyScripts';
+import Tournaments from './components/Tournaments';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
@@ -14,7 +15,7 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 window.process = {
   env: {
     NODE_ENV: 'development'
-  }
+    }
 };
 
 function App() {
@@ -30,8 +31,9 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/scripts" element={<MyScripts />} />
+              <Route path="/tournaments" element={<Tournaments />} />
             </Routes>
-          </div>
+        </div>
         </div>
       </Router>
     </AuthProvider>

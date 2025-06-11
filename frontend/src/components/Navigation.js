@@ -31,6 +31,9 @@ const Navigation = () => {
                 <li className="nav-item">
                   <Link className="nav-link" to="/scripts">Mes Scripts</Link>
                 </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/tournaments">Tournois</Link>
+                </li>
               </>
             )}
           </ul>
@@ -38,7 +41,9 @@ const Navigation = () => {
             {user ? (
               <>
                 <li className="nav-item">
-                  <span className="nav-link">Bienvenue, {user.username}</span>
+                  <span className="nav-link">
+                    {user.role === 'admin' ? '👑 ' : ''}{user.username}
+                  </span>
                 </li>
                 <li className="nav-item">
                   <button className="btn btn-link nav-link" onClick={handleLogout}>

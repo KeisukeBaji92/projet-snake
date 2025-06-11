@@ -1,0 +1,496 @@
+const Tournament = require('../models/Tournament');
+const Match = require('../models/Match');
+const Script = require('../models/Script');
+const User = require('../models/User');
+const GameEngine = require('./GameEngine');
+
+class TournamentService {
+  
+  // Créer un nouveau tournoi
+  static async createTournament(data) {
+    const tournament = new Tournament({
+      name: data.name,
+      description: data.description,
+      maxParticipants: data.maxParticipants,
+      type: data.type,
+      settings: {
+        difficulty: data.difficulty,
+        maxRounds: data.maxRounds || 1000,
+        timeoutMs: data.timeoutMs || 10000
+      }
+    });
+
+    await tournament.save();
+    return tournament;
+  }
+
+  // Inscrire un joueur au tournoi
+  static async registerParticipant(tournamentId, userId, scriptId) {
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) {
+      throw new Error('Tournoi non trouvé');
+    }
+
+    if (tournament.status !== 'registering') {
+      throw new Error('Les inscriptions sont fermées');
+    }
+
+    if (tournament.participants.length >= tournament.maxParticipants) {
+      throw new Error('Le tournoi est complet');
+    }
+
+    if (tournament.participants.some(p => p.user.toString() === userId)) {
+      throw new Error('Vous êtes déjà inscrit à ce tournoi');
+    }
+
+    // Vérifier que le script appartient à l'utilisateur
+    const script = await Script.findOne({ _id: scriptId, author: userId });
+    if (!script) {
+      throw new Error('Script non trouvé ou non autorisé');
+    }
+
+    tournament.participants.push({
+      user: userId,
+      script: scriptId,
+      registeredAt: new Date()
+    });
+
+    await tournament.save();
+    return tournament;
+  }
+
+  // Démarrer un tournoi
+  static async startTournament(id) {
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      throw new Error('Tournoi non trouvé');
+    }
+
+    if (tournament.status !== 'registering') {
+      throw new Error('Le tournoi ne peut pas être démarré');
+    }
+
+    if (tournament.participants.length < 2) {
+      throw new Error('Il faut au moins 2 participants pour démarrer le tournoi');
+    }
+
+    // Initialiser les phases selon le type de tournoi
+    tournament.phases = [];
+    if (tournament.type === 'elimination') {
+      tournament.phases.push({
+        name: 'Élimination directe',
+        type: 'elimination',
+        matches: [],
+        completed: false
+      });
+    } else if (tournament.type === 'round_robin') {
+      tournament.phases.push({
+        name: 'Phase de poules',
+        type: 'round_robin',
+        matches: [],
+        completed: false
+      });
+    } else if (tournament.type === 'swiss') {
+      tournament.phases.push({
+        name: 'Système suisse - Round 1',
+        type: 'swiss',
+        matches: [],
+        completed: false
+      });
+    }
+
+    tournament.status = 'running';
+    tournament.startedAt = new Date();
+
+    await tournament.save();
+    return tournament;
+  }
+
+  // Générer les phases d'élimination
+  static async generateEliminationPhases(tournament) {
+    const participants = tournament.participants;
+    const phases = [];
+
+    // Calculer le nombre de phases nécessaires
+    let currentParticipants = participants.length;
+    let phaseNumber = 1;
+
+    while (currentParticipants > 1) {
+      const phaseName = this.getPhaseNameByParticipants(currentParticipants);
+      const matches = [];
+
+      // Créer les matchs pour cette phase
+      if (phaseNumber === 1) {
+        // Premier tour : tous les participants
+        for (let i = 0; i < participants.length; i += 2) {
+          if (i + 1 < participants.length) {
+            const match = await this.createMatch(
+              tournament._id,
+              phaseName,
+              participants[i],
+              participants[i + 1],
+              tournament.settings
+            );
+            matches.push(match._id);
+          }
+        }
+      }
+
+      phases.push({
+        name: phaseName,
+        type: 'elimination',
+        matches: matches,
+        completed: false
+      });
+
+      currentParticipants = Math.ceil(currentParticipants / 2);
+      phaseNumber++;
+    }
+
+    tournament.phases = phases;
+  }
+
+  // Générer les phases de poules (round robin)
+  static async generateRoundRobinPhases(tournament) {
+    const participants = tournament.participants;
+    const matches = [];
+
+    // Chaque participant joue contre tous les autres
+    for (let i = 0; i < participants.length; i++) {
+      for (let j = i + 1; j < participants.length; j++) {
+        const match = await this.createMatch(
+          tournament._id,
+          'Phase de poules',
+          participants[i],
+          participants[j],
+          tournament.settings
+        );
+        matches.push(match._id);
+      }
+    }
+
+    tournament.phases = [{
+      name: 'Phase de poules',
+      type: 'group',
+      matches: matches,
+      completed: false
+    }];
+  }
+
+  // Créer un match
+  static async createMatch(tournamentId, phaseName, participant1, participant2, settings) {
+    const match = new Match({
+      tournament: tournamentId,
+      phase: phaseName,
+      participants: [
+        {
+          user: participant1.user,
+          script: participant1.script,
+          color: 'red'
+        },
+        {
+          user: participant2.user,
+          script: participant2.script,
+          color: 'blue'
+        }
+      ],
+      settings: {
+        difficulty: settings.difficulty,
+        gridSize: { rows: 20, cols: 20 },
+        maxRounds: settings.maxRounds,
+        timeoutMs: settings.timeoutMs
+      },
+      status: 'pending'
+    });
+
+    return await match.save();
+  }
+
+  // Exécuter un match
+  static async executeMatch(matchId) {
+    const match = await Match.findById(matchId)
+      .populate('participants.script', 'code');
+
+    if (!match) {
+      throw new Error('Match non trouvé');
+    }
+
+    if (match.status !== 'pending') {
+      throw new Error('Match déjà exécuté');
+    }
+
+    match.status = 'running';
+    match.startedAt = new Date();
+    await match.save();
+
+    try {
+      // Récupérer les scripts
+      const script1 = match.participants.find(p => p.color === 'red').script.code;
+      const script2 = match.participants.find(p => p.color === 'blue').script.code;
+
+      // Créer le moteur de jeu
+      const engine = new GameEngine(match.settings);
+
+      // Simuler le match
+      const { result, replay } = await engine.simulateMatch(script1, script2);
+
+      // Mettre à jour le match avec les résultats
+      match.result = {
+        ...result,
+        winner: this.determineWinner(match, result.winner),
+        loser: this.determineLoser(match, result.winner)
+      };
+
+      match.replay = replay;
+      match.status = 'completed';
+      match.completedAt = new Date();
+
+      await match.save();
+
+      // Mettre à jour les statistiques
+      await this.updateStats(match);
+
+      return match;
+
+    } catch (error) {
+      match.status = 'error';
+      match.addLog('error', 'Erreur lors de l\'exécution du match', error.message);
+      await match.save();
+      throw error;
+    }
+  }
+
+  // Déterminer le gagnant du match
+  static determineWinner(match, gameWinner) {
+    if (gameWinner === 'draw') return null;
+    
+    const winnerColor = gameWinner === 'snake1' ? 'red' : 'blue';
+    const winner = match.participants.find(p => p.color === winnerColor);
+    
+    return {
+      user: winner.user,
+      script: winner.script,
+      color: winnerColor
+    };
+  }
+
+  // Déterminer le perdant du match
+  static determineLoser(match, gameWinner) {
+    if (gameWinner === 'draw') return null;
+    
+    const loserColor = gameWinner === 'snake1' ? 'blue' : 'red';
+    const loser = match.participants.find(p => p.color === loserColor);
+    
+    return {
+      user: loser.user,
+      script: loser.script,
+      color: loserColor
+    };
+  }
+
+  // Mettre à jour les statistiques
+  static async updateStats(match) {
+    if (!match.result.winner) {
+      // Match nul - mettre à jour les deux participants
+      for (const participant of match.participants) {
+        await User.findByIdAndUpdate(participant.user, { $inc: { 'stats.draws': 1 } });
+        await Script.findByIdAndUpdate(participant.script, { $inc: { 'stats.draws': 1 } });
+      }
+    } else {
+      // Victoire/défaite
+      await User.findByIdAndUpdate(match.result.winner.user, { $inc: { 'stats.wins': 1 } });
+      await Script.findByIdAndUpdate(match.result.winner.script, { $inc: { 'stats.wins': 1 } });
+      
+      await User.findByIdAndUpdate(match.result.loser.user, { $inc: { 'stats.losses': 1 } });
+      await Script.findByIdAndUpdate(match.result.loser.script, { $inc: { 'stats.losses': 1 } });
+    }
+  }
+
+  // Exécuter tous les matchs d'une phase
+  static async executePhase(tournamentId, phaseName) {
+    const tournament = await Tournament.findById(tournamentId);
+    const phase = tournament.phases.find(p => p.name === phaseName);
+    
+    if (!phase) {
+      throw new Error('Phase non trouvée');
+    }
+
+    const results = [];
+    
+    // Exécuter tous les matchs de la phase
+    for (const matchId of phase.matches) {
+      try {
+        const result = await this.executeMatch(matchId);
+        results.push(result);
+      } catch (error) {
+        console.error(`Erreur lors de l'exécution du match ${matchId}:`, error);
+      }
+    }
+
+    // Marquer la phase comme terminée
+    phase.completed = true;
+    await tournament.save();
+
+    // Générer la phase suivante si nécessaire
+    if (tournament.type === 'elimination') {
+      await this.generateNextEliminationPhase(tournament, phase, results);
+    }
+
+    return results;
+  }
+
+  // Générer la phase suivante d'élimination
+  static async generateNextEliminationPhase(tournament, currentPhase, results) {
+    const winners = results
+      .filter(match => match.result.winner)
+      .map(match => ({
+        user: match.result.winner.user,
+        script: match.result.winner.script
+      }));
+
+    if (winners.length <= 1) {
+      // Tournoi terminé
+      tournament.status = 'completed';
+      tournament.completedAt = new Date();
+      
+      if (winners.length === 1) {
+        tournament.winner = winners[0];
+      }
+      
+      await tournament.save();
+      return;
+    }
+
+    // Créer la phase suivante
+    const nextPhaseName = this.getPhaseNameByParticipants(winners.length);
+    const matches = [];
+
+    for (let i = 0; i < winners.length; i += 2) {
+      if (i + 1 < winners.length) {
+        const match = await this.createMatch(
+          tournament._id,
+          nextPhaseName,
+          winners[i],
+          winners[i + 1],
+          tournament.settings
+        );
+        matches.push(match._id);
+      }
+    }
+
+    tournament.phases.push({
+      name: nextPhaseName,
+      type: 'elimination',
+      matches: matches,
+      completed: false
+    });
+
+    await tournament.save();
+  }
+
+  // Obtenir le nom de la phase selon le nombre de participants
+  static getPhaseNameByParticipants(count) {
+    if (count >= 16) return 'Premier tour';
+    if (count >= 8) return 'Huitièmes de finale';
+    if (count >= 4) return 'Quarts de finale';
+    if (count >= 2) return 'Demi-finales';
+    return 'Finale';
+  }
+
+  // Obtenir les tournois actifs
+  static async getActiveTournaments() {
+    return await Tournament.find({ status: { $ne: 'completed' } })
+      .populate('participants.user', 'username')
+      .populate('participants.script', 'name')
+      .sort({ created: -1 });
+  }
+
+  // Obtenir les détails d'un tournoi
+  static async getTournamentDetails(tournamentId) {
+    return await Tournament.findById(tournamentId)
+      .populate('participants.user', 'username stats')
+      .populate('participants.script', 'name stats')
+      .populate({
+        path: 'phases.matches',
+        populate: {
+          path: 'participants.user participants.script',
+          select: 'username name'
+        }
+      });
+  }
+
+  // Obtenir les données de replay d'un match
+  static async getMatchReplay(matchId) {
+    const match = await Match.findById(matchId)
+      .populate('participants.user', 'username')
+      .populate('participants.script', 'name');
+
+    if (!match) {
+      throw new Error('Match non trouvé');
+    }
+
+    return match.getReplayData();
+  }
+
+  static async updateTournament(id, data) {
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      throw new Error('Tournoi non trouvé');
+    }
+
+    if (tournament.status !== 'registering') {
+      throw new Error('Le tournoi ne peut plus être modifié');
+    }
+
+    Object.assign(tournament, {
+      name: data.name,
+      description: data.description,
+      maxParticipants: data.maxParticipants,
+      type: data.type,
+      settings: {
+        difficulty: data.difficulty,
+        maxRounds: data.maxRounds || tournament.settings.maxRounds,
+        timeoutMs: data.timeoutMs || tournament.settings.timeoutMs
+      }
+    });
+
+    await tournament.save();
+    return tournament;
+  }
+
+  static async deleteTournament(id) {
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      throw new Error('Tournoi non trouvé');
+    }
+
+    if (tournament.status !== 'registering') {
+      throw new Error('Le tournoi ne peut plus être supprimé');
+    }
+
+    await Tournament.deleteOne({ _id: id });
+    // Supprimer aussi les matchs associés
+    await Match.deleteMany({ tournament: id });
+  }
+
+  static async getTournamentById(id) {
+    const tournament = await Tournament.findById(id)
+      .populate('participants.user', 'username')
+      .populate('participants.script', 'name')
+      .populate({
+        path: 'phases.matches',
+        populate: {
+          path: 'participants.user participants.script',
+          select: 'username name'
+        }
+      });
+
+    if (!tournament) {
+      throw new Error('Tournoi non trouvé');
+    }
+
+    return tournament;
+  }
+}
+
+module.exports = TournamentService; 
