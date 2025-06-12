@@ -156,7 +156,17 @@ router.get('/:id/leaderboard', async (req, res) => {
       return b.totalScore - a.totalScore;
     });
 
-    res.json(leaderboard);
+  res.json(leaderboard);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/tournaments/match/:matchId/replay - Obtenir le replay d'un match
+router.get('/match/:matchId/replay', async (req, res) => {
+  try {
+    const data = await TournamentService.getMatchReplay(req.params.matchId);
+    res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

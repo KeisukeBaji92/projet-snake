@@ -61,7 +61,7 @@ class TournamentService {
 
   // Démarrer un tournoi
   static async startTournament(id) {
-    const tournament = await Tournament.findById(id);
+    let tournament = await Tournament.findById(id);
     if (!tournament) {
       throw new Error('Tournoi non trouvé');
     }
@@ -74,35 +74,46 @@ class TournamentService {
       throw new Error('Il faut au moins 2 participants pour démarrer le tournoi');
     }
 
-    // Initialiser les phases selon le type de tournoi
-    tournament.phases = [];
+    // Générer les phases et les matchs selon le type de tournoi
     if (tournament.type === 'elimination') {
-      tournament.phases.push({
-        name: 'Élimination directe',
-        type: 'elimination',
-        matches: [],
-        completed: false
-      });
+      await this.generateEliminationPhases(tournament);
     } else if (tournament.type === 'round_robin') {
-      tournament.phases.push({
-        name: 'Phase de poules',
-        type: 'round_robin',
-        matches: [],
-        completed: false
-      });
+      await this.generateRoundRobinPhases(tournament);
     } else if (tournament.type === 'swiss') {
-      tournament.phases.push({
-        name: 'Système suisse - Round 1',
-        type: 'swiss',
-        matches: [],
-        completed: false
-      });
+      // Pas encore d'implémentation spécifique
+      await this.generateRoundRobinPhases(tournament);
     }
 
     tournament.status = 'running';
     tournament.startedAt = new Date();
-
     await tournament.save();
+
+    // Exécuter le tournoi immédiatement
+    await this.runTournament(tournament._id);
+
+    // Retourner l'état final du tournoi
+    return await this.getTournamentById(tournament._id);
+  }
+
+  // Exécuter l'ensemble d'un tournoi déjà démarré
+  static async runTournament(id) {
+    let tournament = await Tournament.findById(id);
+    if (!tournament) {
+      throw new Error('Tournoi non trouvé');
+    }
+
+    if (tournament.status !== 'running') {
+      throw new Error('Le tournoi n\'est pas en cours');
+    }
+
+    // Boucler sur les phases jusqu\'à complétion
+    while (tournament.status === 'running') {
+      const phase = tournament.phases.find(p => !p.completed);
+      if (!phase) break;
+      await this.executePhase(tournament._id, phase.name);
+      tournament = await Tournament.findById(id);
+    }
+
     return tournament;
   }
 
