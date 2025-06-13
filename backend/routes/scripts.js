@@ -6,9 +6,6 @@ const auth = require('../middleware/auth');
 // Obtenir tous les scripts de l'utilisateur connecté
 router.get('/user', auth, scriptController.getUserScripts);
 
-// Route alternative pour compatibilité
-router.get('/', auth, scriptController.getUserScripts);
-
 // Route de débogage pour lister tous les scripts (à des fins de diagnostic)
 router.get('/debug/all', auth, async (req, res) => {
   try {
@@ -28,6 +25,12 @@ router.get('/debug/all', auth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Obtenir un script par ID (AVANT la route catch-all)
+router.get('/:scriptId', scriptController.getScriptById);
+
+// Route alternative pour compatibilité (APRÈS les routes spécifiques)
+router.get('/', auth, scriptController.getUserScripts);
 
 // Créer un nouveau script
 router.post('/', auth, scriptController.createScript);

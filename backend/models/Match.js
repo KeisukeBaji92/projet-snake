@@ -107,9 +107,9 @@ const matchSchema = new mongoose.Schema({
       snake1Move: String, // 'up', 'down', 'left', 'right'
       snake2Move: String,
       events: [{
-        type: String, // 'food_eaten', 'collision', 'new_food', 'bomb_hit'
-        snake: String, // 'snake1' ou 'snake2'
-        position: { x: Number, y: Number },
+        type: { type: String }, // 'food_eaten', 'collision', 'new_food', 'bomb_hit'
+        snake: { type: String }, // 'snake1' ou 'snake2'
+        position: { x: { type: Number }, y: { type: Number } },
         details: mongoose.Schema.Types.Mixed // Infos supplémentaires
       }],
       state: {

@@ -24,21 +24,21 @@ class GameEngine {
     };
   }
 
-  // Initialiser l'état du jeu
+  // Initialiser l'état du jeu - CORRIGÉ
   initializeGame() {
     const state = {
       snake1: [
         { x: 3, y: 3 },
-        { x: 3, y: 4 },
-        { x: 3, y: 5 }
+        { x: 2, y: 3 },
+        { x: 1, y: 3 }
       ],
       snake2: [
         { x: this.settings.rows - 4, y: this.settings.cols - 4 },
-        { x: this.settings.rows - 4, y: this.settings.cols - 5 },
-        { x: this.settings.rows - 4, y: this.settings.cols - 6 }
+        { x: this.settings.rows - 3, y: this.settings.cols - 4 },
+        { x: this.settings.rows - 2, y: this.settings.cols - 4 }
       ],
-      dir1: 'right',
-      dir2: 'left',
+      dir1: 'down',
+      dir2: 'up',
       score1: 0,
       score2: 0,
       food: null,
@@ -54,7 +54,7 @@ class GameEngine {
     return state;
   }
 
-  // Générer une position de nourriture
+  // Générer une position de nourriture - CORRIGÉ
   generateFood(occupiedPositions) {
     const free = [];
     for (let x = 0; x < this.settings.rows; x++) {
@@ -64,6 +64,12 @@ class GameEngine {
         }
       }
     }
+    
+    // CORRECTION: S'assurer qu'on a toujours de la nourriture
+    if (free.length === 0) {
+      return { x: Math.floor(this.settings.rows / 2), y: Math.floor(this.settings.cols / 2) };
+    }
+    
     return free[Math.floor(this.random() * free.length)];
   }
 
@@ -71,10 +77,10 @@ class GameEngine {
   generateBombs() {
     const bombs = [];
     const occupiedPositions = [
-      { x: 3, y: 3 }, { x: 3, y: 4 }, { x: 3, y: 5 },
+      { x: 3, y: 3 }, { x: 2, y: 3 }, { x: 1, y: 3 },
       { x: this.settings.rows - 4, y: this.settings.cols - 4 },
-      { x: this.settings.rows - 4, y: this.settings.cols - 5 },
-      { x: this.settings.rows - 4, y: this.settings.cols - 6 }
+      { x: this.settings.rows - 3, y: this.settings.cols - 4 },
+      { x: this.settings.rows - 2, y: this.settings.cols - 4 }
     ];
 
     while (bombs.length < 4) {
@@ -92,84 +98,75 @@ class GameEngine {
     return bombs;
   }
 
-  // Créer l'état de jeu pour un script avec vision limitée
+  // Créer l'état de jeu pour un script avec vision limitée - SIMPLIFIÉ
   createScriptState(gameState, isSnake1) {
-    const head = isSnake1 ? gameState.snake1[0] : gameState.snake2[0];
     const mySnake = isSnake1 ? gameState.snake1 : gameState.snake2;
     const enemySnake = isSnake1 ? gameState.snake2 : gameState.snake1;
 
-    if (this.settings.difficulty === 'hard') {
-      const VISION_RANGE = 3;
-      
-      const isVisible = (pos) => {
-        const distance = Math.max(Math.abs(pos.x - head.x), Math.abs(pos.y - head.y));
-        return distance <= VISION_RANGE;
-      };
-
-      return {
-        me: mySnake.filter(segment => isVisible(segment)),
-        opponent: enemySnake.filter(segment => isVisible(segment)),
-        you: enemySnake.filter(segment => isVisible(segment)),
-        food: isVisible(gameState.food) ? gameState.food : null,
-        bombs: gameState.bombs.filter(bomb => isVisible(bomb)),
-        score: {
-          me: isSnake1 ? gameState.score1 : gameState.score2,
-          opponent: isSnake1 ? gameState.score2 : gameState.score1
-        },
-        difficulty: 'hard',
-        rows: this.settings.rows,
-        cols: this.settings.cols
-      };
-    } else {
-      return {
-        me: mySnake,
-        opponent: enemySnake,
-        you: enemySnake,
-        food: gameState.food,
-        bombs: [],
-        score: {
-          me: isSnake1 ? gameState.score1 : gameState.score2,
-          opponent: isSnake1 ? gameState.score2 : gameState.score1
-        },
-        difficulty: 'normal',
-        rows: this.settings.rows,
-        cols: this.settings.cols
-      };
-    }
+    return {
+      me: mySnake,
+      opponent: enemySnake,
+      you: enemySnake, // Alias pour compatibilité
+      mySnake: { body: mySnake }, // Format alternatif
+      food: gameState.food,
+      bombs: gameState.bombs || [],
+      board: {
+        width: this.settings.cols,
+        height: this.settings.rows
+      },
+      turn: gameState.round,
+      score: {
+        me: isSnake1 ? gameState.score1 : gameState.score2,
+        opponent: isSnake1 ? gameState.score2 : gameState.score1
+      },
+      difficulty: this.settings.difficulty,
+      rows: this.settings.rows,
+      cols: this.settings.cols
+    };
   }
 
-  // Exécuter un script de manière sécurisée
+  // Exécuter un script de manière sécurisée - AMÉLIORÉ
   executeScript(scriptCode, gameState, timeoutMs = 1000) {
     try {
       const vm = new VM({
         timeout: timeoutMs,
         sandbox: {
           state: gameState,
+          gameState: gameState, // Alias
           console: {
             log: () => {} // Désactiver console.log dans les scripts
           }
         }
       });
 
-      // Wrapper pour exécuter la fonction nextMove
+      // Wrapper pour plusieurs formats de fonctions
       const wrappedCode = `
         ${scriptCode}
         
+        let result = 'right'; // Défaut
+        
         if (typeof nextMove === 'function') {
-          nextMove(state);
-        } else {
-          throw new Error('Function nextMove not found');
+          result = nextMove(state);
+        } else if (typeof makeMove === 'function') {
+          result = makeMove(state);
+        } else if (typeof move === 'function') {
+          result = move(state);
         }
+        
+        result;
       `;
 
       const result = vm.run(wrappedCode);
       
-      // Valider le mouvement
-      if (!['up', 'down', 'left', 'right'].includes(result)) {
-        return 'right'; // Mouvement par défaut
+      // Valider et normaliser le mouvement
+      if (typeof result === 'string') {
+        const normalized = result.toLowerCase().trim();
+        if (['up', 'down', 'left', 'right'].includes(normalized)) {
+          return normalized;
+        }
       }
       
-      return result;
+      return 'right'; // Mouvement par défaut
     } catch (error) {
       console.error('Script execution error:', error.message);
       return 'right'; // Mouvement par défaut en cas d'erreur
@@ -193,11 +190,16 @@ class GameEngine {
     return [head, ...snake];
   }
 
-  // Vérifier les collisions
+  // Vérifier les collisions - AMÉLIORÉ
   checkCollisions(gameState) {
     const { snake1, snake2, food, bombs } = gameState;
     const head1 = snake1[0];
     const head2 = snake2[0];
+
+    // CORRECTION: Vérifier si la nourriture existe
+    if (!food) {
+      gameState.food = this.generateFood([...snake1, ...snake2]);
+    }
 
     // Collision avec les murs
     const isOutOfBounds = (head) => 
@@ -207,7 +209,7 @@ class GameEngine {
     // Collision avec les bombes
     const hitsBomb = (head) => 
       this.settings.difficulty === 'hard' && 
-      bombs.some(bomb => bomb.x === head.x && bomb.y === head.y);
+      bombs && bombs.some(bomb => bomb.x === head.x && bomb.y === head.y);
 
     // Collision avec soi-même
     const hitsOwnBody = (head, snake) => 
@@ -225,7 +227,7 @@ class GameEngine {
     // Vérifier la nourriture d'abord
     let ate1 = false, ate2 = false;
     
-    if (head1.x === food.x && head1.y === food.y) {
+    if (gameState.food && head1.x === gameState.food.x && head1.y === gameState.food.y) {
       ate1 = true;
       gameState.score1++;
       result.events.push({
@@ -235,7 +237,7 @@ class GameEngine {
       });
     }
     
-    if (head2.x === food.x && head2.y === food.y) {
+    if (gameState.food && head2.x === gameState.food.x && head2.y === gameState.food.y) {
       ate2 = true;
       gameState.score2++;
       result.events.push({
@@ -322,7 +324,7 @@ class GameEngine {
         round: gameState.round,
         snake1Move: move1,
         snake2Move: move2,
-        events: collisionResult.events,
+        events: collisionResult.events || [],
         state: JSON.parse(JSON.stringify({
           snake1: gameState.snake1,
           snake2: gameState.snake2,
@@ -355,4 +357,4 @@ class GameEngine {
   }
 }
 
-module.exports = GameEngine; 
+module.exports = GameEngine;

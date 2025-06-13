@@ -71,6 +71,22 @@ exports.updateScript = async (req, res) => {
   }
 };
 
+// Obtenir un script par ID (pour les tournois)
+exports.getScriptById = async (req, res) => {
+  try {
+    const script = await Script.findById(req.params.scriptId).populate('author', 'username');
+    
+    if (!script) {
+      return res.status(404).json({ message: 'Script non trouvé' });
+    }
+
+    res.json(script);
+  } catch (error) {
+    console.error('Erreur lors de la récupération du script:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // Supprimer un script
 exports.deleteScript = async (req, res) => {
   try {
