@@ -94,14 +94,8 @@ export default function SnakeGame({
         if (mode === 'script-vs-script' && userMove2) {
           move2 = userMove2(getGameState(false)) || 'left';
         } else if (mode === 'mirror') {
-          // Mode miroir : inverser les directions pour créer un effet symétrique
-          const mirrorMap = {
-            'up': 'down',
-            'down': 'up', 
-            'left': 'right',
-            'right': 'left'
-          };
-          move2 = mirrorMap[move1] || 'left';
+          // Mode miroir : le même script s'affronte depuis deux positions différentes
+          move2 = userMove(getGameState(false)) || 'left';
         } else {
           // Mode vs greedy : utiliser smartBot avec le bon état
           move2 = smartBot(getGameState(false), st.prevDir2) || 'left';
