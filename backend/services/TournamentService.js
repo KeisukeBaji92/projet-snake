@@ -238,14 +238,7 @@ class TournamentService {
   static async getTournamentDetails(tournamentId) {
     return await Tournament.findById(tournamentId)
       .populate('participants.user', 'username stats')
-      .populate('participants.script', 'name stats')
-      .populate({
-        path: 'phases.matches',
-        populate: {
-          path: 'participants.user participants.script',
-          select: 'username name'
-        }
-      });
+      .populate('participants.script', 'name stats');
   }
 
   // Obtenir les données de replay d'un match
@@ -305,14 +298,7 @@ class TournamentService {
   static async getTournamentById(id) {
     const tournament = await Tournament.findById(id)
       .populate('participants.user', 'username')
-      .populate('participants.script', 'name code')
-      .populate({
-        path: 'phases.matches',
-        populate: {
-          path: 'participants.user participants.script',
-          select: 'username name code'
-        }
-      });
+      .populate('participants.script', 'name code');
 
     if (!tournament) {
       throw new Error('Tournoi non trouvé');

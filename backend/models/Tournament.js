@@ -55,18 +55,6 @@ const tournamentSchema = new mongoose.Schema({
       default: 10000
     }
   },
-  phases: [{
-    name: String, // 'Phase de poules', 'Quart de finale', etc.
-    type: String, // 'group', 'elimination'
-    matches: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Match'
-    }],
-    completed: {
-      type: Boolean,
-      default: false
-    }
-  }],
   winner: {
     user: {
       type: mongoose.Schema.Types.ObjectId,
