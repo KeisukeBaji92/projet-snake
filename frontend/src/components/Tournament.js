@@ -38,9 +38,7 @@ const Tournament = () => {
     try {
       const response = await fetch(`http://localhost:5000/api/tournaments/${id}/matches`);
       const data = await response.json();
-      // Aplatir les matchs par phase
-      const allMatches = Object.values(data).flat();
-      setMatches(allMatches);
+      setMatches(data);
     } catch (error) {
       console.error('Erreur chargement matchs:', error);
     }

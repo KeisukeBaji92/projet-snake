@@ -1,0 +1,68 @@
+.profile-info-item {
+  margin-bottom: 1.5rem;
+}
+
+.profile-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.profile-value {
+  font-size: 0.95rem;
+  color: #212529;
+  font-weight: 400;
+  padding: 0.5rem 0;
+}
+
+.card-header {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-header h4 {
+  font-weight: 600;
+}
+
+.badge.fs-6 {
+  font-size: 1rem !important;
+  padding: 0.5rem 0.8rem;
+}
+
+.profile-info-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .profile-info-item {
+    margin-bottom: 1rem;
+  }
+  
+  .profile-value {
+    font-size: 1rem;
+  }
+  
+  .card-header h4 {
+    font-size: 1.1rem;
+  }
+}
+
+/* Icônes */
+.fas {
+  color: #6c757d;
+}
+
+.card-header .fas {
+  color: white;
+}
+
+/* Animation au hover */
+.card {
+  transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+} 

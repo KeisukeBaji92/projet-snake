@@ -6,6 +6,7 @@ import Home from './components/Home';
 import Sandbox from './components/Sandbox';
 import Login from './components/Login';
 import Register from './components/Register';
+import Profile from './components/Profile';
 import MyScripts from './components/MyScripts';
 import Tournaments from './components/Tournaments';
 import TestTournamentMatch from './components/TestTournamentMatch';
@@ -31,6 +32,7 @@ function App() {
               <Route path="/sandbox" element={<Sandbox />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/scripts" element={<MyScripts />} />
               <Route path="/tournaments" element={<Tournaments />} />
               <Route path="/test-match" element={<TestTournamentMatch />} />

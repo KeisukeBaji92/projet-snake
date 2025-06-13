@@ -59,7 +59,7 @@ class TournamentService {
     return tournament;
   }
 
-  // Démarrer un tournoi (simplifié pour round robin uniquement)
+  // Démarrer un tournoi
   static async startTournament(id) {
     const tournament = await Tournament.findById(id);
     if (!tournament) {
@@ -74,7 +74,31 @@ class TournamentService {
       throw new Error('Il faut au moins 2 participants pour démarrer le tournoi');
     }
 
-    // Simplement changer le status - les matchs seront créés par executeAllMatches
+    // Initialiser les phases selon le type de tournoi
+    tournament.phases = [];
+    if (tournament.type === 'elimination') {
+      tournament.phases.push({
+        name: 'Élimination directe',
+        type: 'elimination',
+        matches: [],
+        completed: false
+      });
+    } else if (tournament.type === 'round_robin') {
+      tournament.phases.push({
+        name: 'Phase de poules',
+        type: 'round_robin',
+        matches: [],
+        completed: false
+      });
+    } else if (tournament.type === 'swiss') {
+      tournament.phases.push({
+        name: 'Système suisse - Round 1',
+        type: 'swiss',
+        matches: [],
+        completed: false
+      });
+    }
+
     tournament.status = 'running';
     tournament.startedAt = new Date();
 
@@ -82,8 +106,76 @@ class TournamentService {
     return tournament;
   }
 
-  // Note: Les phases sont maintenant gérées directement par executeAllMatches
-  // Plus besoin de générer des phases séparées en round robin
+  // Générer les phases d'élimination
+  static async generateEliminationPhases(tournament) {
+    const participants = tournament.participants;
+    const phases = [];
+
+    // Calculer le nombre de phases nécessaires
+    let currentParticipants = participants.length;
+    let phaseNumber = 1;
+
+    while (currentParticipants > 1) {
+      const phaseName = this.getPhaseNameByParticipants(currentParticipants);
+      const matches = [];
+
+      // Créer les matchs pour cette phase
+      if (phaseNumber === 1) {
+        // Premier tour : tous les participants
+        for (let i = 0; i < participants.length; i += 2) {
+          if (i + 1 < participants.length) {
+            const match = await this.createMatch(
+              tournament._id,
+              phaseName,
+              participants[i],
+              participants[i + 1],
+              tournament.settings
+            );
+            matches.push(match._id);
+          }
+        }
+      }
+
+      phases.push({
+        name: phaseName,
+        type: 'elimination',
+        matches: matches,
+        completed: false
+      });
+
+      currentParticipants = Math.ceil(currentParticipants / 2);
+      phaseNumber++;
+    }
+
+    tournament.phases = phases;
+  }
+
+  // Générer les phases de poules (round robin)
+  static async generateRoundRobinPhases(tournament) {
+    const participants = tournament.participants;
+    const matches = [];
+
+    // Chaque participant joue contre tous les autres
+    for (let i = 0; i < participants.length; i++) {
+      for (let j = i + 1; j < participants.length; j++) {
+        const match = await this.createMatch(
+          tournament._id,
+          'Phase de poules',
+          participants[i],
+          participants[j],
+          tournament.settings
+        );
+        matches.push(match._id);
+      }
+    }
+
+    tournament.phases = [{
+      name: 'Phase de poules',
+      type: 'group',
+      matches: matches,
+      completed: false
+    }];
+  }
 
   // Créer un match
   static async createMatch(tournamentId, phaseName, participant1, participant2, settings) {
@@ -142,15 +234,6 @@ class TournamentService {
       // Simuler le match
       const { result, replay } = await engine.simulateMatch(script1, script2);
 
-      // Corriger le format des événements dans le replay
-      const fixedReplay = {
-        ...replay,
-        actions: replay.actions.map(action => ({
-          ...action,
-          events: Array.isArray(action.events) ? action.events : []
-        }))
-      };
-
       // Mettre à jour le match avec les résultats
       match.result = {
         ...result,
@@ -158,7 +241,7 @@ class TournamentService {
         loser: this.determineLoser(match, result.winner)
       };
 
-      match.replay = fixedReplay;
+      match.replay = replay;
       match.status = 'completed';
       match.completedAt = new Date();
 
@@ -223,14 +306,102 @@ class TournamentService {
     }
   }
 
-  // Note: Les phases d'élimination ne sont plus nécessaires en round robin
-  // Tous les matchs sont créés et exécutés directement par executeAllMatches
+  // Exécuter tous les matchs d'une phase
+  static async executePhase(tournamentId, phaseName) {
+    const tournament = await Tournament.findById(tournamentId);
+    const phase = tournament.phases.find(p => p.name === phaseName);
+    
+    if (!phase) {
+      throw new Error('Phase non trouvée');
+    }
 
-  // Obtenir tous les tournois (actifs ET completed pour pouvoir voir les replays)
+    const results = [];
+    
+    // Exécuter tous les matchs de la phase
+    for (const matchId of phase.matches) {
+      try {
+        const result = await this.executeMatch(matchId);
+        results.push(result);
+      } catch (error) {
+        console.error(`Erreur lors de l'exécution du match ${matchId}:`, error);
+      }
+    }
+
+    // Marquer la phase comme terminée
+    phase.completed = true;
+    await tournament.save();
+
+    // Générer la phase suivante si nécessaire
+    if (tournament.type === 'elimination') {
+      await this.generateNextEliminationPhase(tournament, phase, results);
+    }
+
+    return results;
+  }
+
+  // Générer la phase suivante d'élimination
+  static async generateNextEliminationPhase(tournament, currentPhase, results) {
+    const winners = results
+      .filter(match => match.result.winner)
+      .map(match => ({
+        user: match.result.winner.user,
+        script: match.result.winner.script
+      }));
+
+    if (winners.length <= 1) {
+      // Tournoi terminé
+      tournament.status = 'completed';
+      tournament.completedAt = new Date();
+      
+      if (winners.length === 1) {
+        tournament.winner = winners[0];
+      }
+      
+      await tournament.save();
+      return;
+    }
+
+    // Créer la phase suivante
+    const nextPhaseName = this.getPhaseNameByParticipants(winners.length);
+    const matches = [];
+
+    for (let i = 0; i < winners.length; i += 2) {
+      if (i + 1 < winners.length) {
+        const match = await this.createMatch(
+          tournament._id,
+          nextPhaseName,
+          winners[i],
+          winners[i + 1],
+          tournament.settings
+        );
+        matches.push(match._id);
+      }
+    }
+
+    tournament.phases.push({
+      name: nextPhaseName,
+      type: 'elimination',
+      matches: matches,
+      completed: false
+    });
+
+    await tournament.save();
+  }
+
+  // Obtenir le nom de la phase selon le nombre de participants
+  static getPhaseNameByParticipants(count) {
+    if (count >= 16) return 'Premier tour';
+    if (count >= 8) return 'Huitièmes de finale';
+    if (count >= 4) return 'Quarts de finale';
+    if (count >= 2) return 'Demi-finales';
+    return 'Finale';
+  }
+
+  // Obtenir les tournois actifs
   static async getActiveTournaments() {
-    return await Tournament.find({})
+    return await Tournament.find({ status: { $ne: 'completed' } })
       .populate('participants.user', 'username')
-      .populate('participants.script', 'name code')
+      .populate('participants.script', 'name')
       .sort({ created: -1 });
   }
 
@@ -238,7 +409,14 @@ class TournamentService {
   static async getTournamentDetails(tournamentId) {
     return await Tournament.findById(tournamentId)
       .populate('participants.user', 'username stats')
-      .populate('participants.script', 'name stats');
+      .populate('participants.script', 'name stats')
+      .populate({
+        path: 'phases.matches',
+        populate: {
+          path: 'participants.user participants.script',
+          select: 'username name'
+        }
+      });
   }
 
   // Obtenir les données de replay d'un match
@@ -298,80 +476,20 @@ class TournamentService {
   static async getTournamentById(id) {
     const tournament = await Tournament.findById(id)
       .populate('participants.user', 'username')
-      .populate('participants.script', 'name code');
+      .populate('participants.script', 'name')
+      .populate({
+        path: 'phases.matches',
+        populate: {
+          path: 'participants.user participants.script',
+          select: 'username name'
+        }
+      });
 
     if (!tournament) {
       throw new Error('Tournoi non trouvé');
     }
 
     return tournament;
-  }
-
-  // Exécuter automatiquement tous les matchs d'un tournoi
-  static async executeAllMatches(tournamentId) {
-    const tournament = await Tournament.findById(tournamentId)
-      .populate('participants.user', 'username')
-      .populate('participants.script', 'name code');
-
-    if (!tournament) {
-      throw new Error('Tournoi non trouvé');
-    }
-
-    if (tournament.status !== 'running') {
-      throw new Error('Le tournoi doit être en cours pour exécuter les matchs');
-    }
-
-    const participants = tournament.participants;
-    const matchResults = [];
-
-    console.log(`🚀 Exécution de tous les matchs pour le tournoi "${tournament.name}"`);
-    console.log(`👥 ${participants.length} participants`);
-
-    // Créer et exécuter tous les matchs en round-robin
-    for (let i = 0; i < participants.length; i++) {
-      for (let j = i + 1; j < participants.length; j++) {
-        const participant1 = participants[i];
-        const participant2 = participants[j];
-
-        console.log(`\n🥊 Match: ${participant1.user.username} vs ${participant2.user.username}`);
-
-        try {
-          // Créer le match
-          const match = await this.createMatch(
-            tournamentId,
-            'Phase de poules',
-            participant1,
-            participant2,
-            tournament.settings
-          );
-
-          // Exécuter le match
-          const executedMatch = await this.executeMatch(match._id);
-          matchResults.push(executedMatch);
-
-          console.log(`✅ Match terminé - Gagnant: ${executedMatch.result.winner ? 
-            (executedMatch.result.winner.color === 'red' ? participant1.user.username : participant2.user.username) : 
-            'Match nul'}`);
-
-        } catch (error) {
-          console.error(`❌ Erreur lors du match ${participant1.user.username} vs ${participant2.user.username}:`, error.message);
-        }
-      }
-    }
-
-    // Marquer le tournoi comme terminé
-    tournament.status = 'completed';
-    tournament.completedAt = new Date();
-    await tournament.save();
-
-    console.log(`\n🏆 Tournoi "${tournament.name}" terminé !`);
-    console.log(`📊 ${matchResults.length} matchs exécutés`);
-
-    return {
-      tournament,
-      matches: matchResults,
-      totalMatches: matchResults.length
-    };
   }
 }
 
