@@ -5,6 +5,7 @@ import './Profile.css';
 const Profile = () => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState(null);
+  const [profileStats, setProfileStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const formatDate = (dateString) => {
@@ -35,18 +36,31 @@ const Profile = () => {
 
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/auth/profile', {
+        
+        // Récupérer le profil de base
+        const profileResponse = await fetch('http://localhost:5000/api/auth/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          setProfileData(data);
-        } else {
-          console.error('Erreur lors de la récupération du profil');
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setProfileData(profileData);
         }
+
+        // Récupérer les statistiques
+        const statsResponse = await fetch('http://localhost:5000/api/auth/profile/stats', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setProfileStats(statsData);
+        }
+
       } catch (error) {
         console.error('Erreur:', error);
       } finally {
@@ -145,22 +159,153 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Prochaines sections à venir */}
-      <div className="row">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-body text-center">
-              <h5 className="text-muted">
-                <i className="fas fa-construction me-2"></i>
-                Autres sections en cours de développement...
-              </h5>
-              <p className="text-muted mb-0">
-                Statistiques de jeu, classement global et plus encore bientôt disponibles !
-              </p>
+      {/* Section 2: Statistiques de Jeu */}
+      {profileStats && (
+        <div className="row">
+          <div className="col-12">
+            <div className="card mb-4">
+              <div className="card-header bg-success text-white">
+                <h4 className="mb-0">
+                  <i className="fas fa-chart-bar me-2"></i>
+                  Statistiques de Jeu
+                </h4>
+              </div>
+              <div className="card-body">
+                <div className="row">
+                  {/* Tournois */}
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-trophy me-2"></i>
+                        Tournois joués
+                      </label>
+                      <div className="profile-value">{profileStats.tournaments.played}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-crown me-2"></i>
+                        Tournois gagnés
+                      </label>
+                      <div className="profile-value">{profileStats.tournaments.won}</div>
+                    </div>
+                  </div>
+
+                  {/* Matchs */}
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-gamepad me-2"></i>
+                        Victoires
+                      </label>
+                      <div className="profile-value">{profileStats.matches.wins}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-times-circle me-2"></i>
+                        Défaites
+                      </label>
+                      <div className="profile-value">{profileStats.matches.losses}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-percentage me-2"></i>
+                        Ratio victoire/défaite
+                      </label>
+                      <div className="profile-value">
+                        <span className={`badge fs-6 ${
+                          profileStats.matches.winRate >= 70 ? 'bg-success' :
+                          profileStats.matches.winRate >= 50 ? 'bg-warning text-dark' :
+                          'bg-danger'
+                        }`}>
+                          {profileStats.matches.winRate}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-code me-2"></i>
+                        Nombre de scripts
+                      </label>
+                      <div className="profile-value">{profileStats.scripts.count}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-apple-alt me-2"></i>
+                        Record de pommes
+                      </label>
+                      <div className="profile-value">{profileStats.records.maxScore}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6 col-lg-3">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-stopwatch me-2"></i>
+                        Plus long combat
+                      </label>
+                      <div className="profile-value">
+                        {profileStats.records.longestMatch > 0 
+                          ? `${Math.round(profileStats.records.longestMatch / 1000)}s`
+                          : '0s'
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-md-6">
+                    <div className="profile-info-item">
+                      <label className="profile-label">
+                        <i className="fas fa-medal me-2"></i>
+                        Classement global
+                      </label>
+                      <div className="profile-value">
+                        <span className={`badge fs-6 ${
+                          profileStats.ranking.globalRank === 1 ? 'bg-warning text-dark' :
+                          profileStats.ranking.globalRank <= 3 ? 'bg-success' :
+                          profileStats.ranking.globalRank <= 10 ? 'bg-info' :
+                          'bg-secondary'
+                        }`}>
+                          #{profileStats.ranking.globalRank}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Prochaines sections à venir */}
+      {!profileStats && (
+        <div className="row">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-body text-center">
+                <h5 className="text-muted">
+                  <i className="fas fa-construction me-2"></i>
+                  Chargement des statistiques...
+                </h5>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

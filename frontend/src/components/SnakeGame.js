@@ -107,35 +107,81 @@ export default function SnakeGame({
       st.dir1 = secureDir(move1, st.prevDir1);
       st.dir2 = secureDir(move2, st.prevDir2);
 
-      // Appliquer les mouvements avec le nouveau système
-      const { newSnake: newSnake1, collision: col1, ate: ate1 } = moveSnake(st.snake1, st.dir1, st);
-      const { newSnake: newSnake2, collision: col2, ate: ate2 } = moveSnake(st.snake2, st.dir2, st);
-
-      // Mettre à jour l'état
-      st.snake1 = newSnake1;
-      st.snake2 = newSnake2;
-      st.score1 += (ate1 ? 1 : 0);
-      st.score2 += (ate2 ? 1 : 0);
-
-      // Générer nouvelle nourriture si mangée
-      if (ate1 || ate2) {
-        st.food = spawnFood(newSnake1, newSnake2, rows, cols);
-        setScore({ s1: st.score1, s2: st.score2 });
+      // Calculer les nouvelles positions des têtes AVANT de vérifier les collisions
+      const newHead1 = { ...st.snake1[0] };
+      const newHead2 = { ...st.snake2[0] };
+      
+      // Appliquer les directions
+      switch(st.dir1) {
+        case 'up': newHead1.x--; break;
+        case 'down': newHead1.x++; break;
+        case 'left': newHead1.y--; break;
+        case 'right': newHead1.y++; break;
       }
-
+      
+      switch(st.dir2) {
+        case 'up': newHead2.x--; break;
+        case 'down': newHead2.x++; break;
+        case 'left': newHead2.y--; break;
+        case 'right': newHead2.y++; break;
+      }
+      
+      // Vérifier les collisions avec les nouvelles positions
+      let col1 = false, col2 = false;
+      
+      // Collision avec les murs
+      if (newHead1.x < 0 || newHead1.x >= rows || newHead1.y < 0 || newHead1.y >= cols) col1 = true;
+      if (newHead2.x < 0 || newHead2.x >= rows || newHead2.y < 0 || newHead2.y >= cols) col2 = true;
+      
+      // Collision avec les bombes
+      if (difficulty === 'hard' && checkBombCollision(newHead1)) col1 = true;
+      if (difficulty === 'hard' && checkBombCollision(newHead2)) col2 = true;
+      
+      // Collision avec soi-même
+      if (isPositionOccupied(newHead1, st.snake1.slice(1))) col1 = true;
+      if (isPositionOccupied(newHead2, st.snake2.slice(1))) col2 = true;
+      
+      // Collision tête contre tête
+      if (newHead1.x === newHead2.x && newHead1.y === newHead2.y) {
+        col1 = true;
+        col2 = true;
+      }
+      
+      // Collision avec l'autre serpent (corps)
+      if (isPositionOccupied(newHead1, st.snake2)) col1 = true;
+      if (isPositionOccupied(newHead2, st.snake1)) col2 = true;
+      
       // Gérer les collisions (mort)
       if (col1 && col2) {
         st.gameOver = true;
         st.winner = 'draw';
-        console.log('💥 Les deux serpents sont morts !');
       } else if (col1) {
         st.gameOver = true;
         st.winner = 'snake2';
-        console.log('💥 Le serpent rouge est mort !');
       } else if (col2) {
         st.gameOver = true;
         st.winner = 'snake1';
-        console.log('💥 Le serpent bleu est mort !');
+      }
+      
+      // Si pas de collision, appliquer les mouvements
+      if (!st.gameOver) {
+        // Vérifier si on mange de la nourriture
+        const ate1 = newHead1.x === st.food.x && newHead1.y === st.food.y;
+        const ate2 = newHead2.x === st.food.x && newHead2.y === st.food.y;
+        
+        // Construire les nouveaux serpents
+        st.snake1 = [newHead1, ...st.snake1.slice(0, ate1 ? st.snake1.length : st.snake1.length - 1)];
+        st.snake2 = [newHead2, ...st.snake2.slice(0, ate2 ? st.snake2.length : st.snake2.length - 1)];
+        
+        // Mettre à jour les scores
+        st.score1 += (ate1 ? 1 : 0);
+        st.score2 += (ate2 ? 1 : 0);
+        
+        // Générer nouvelle nourriture si mangée
+        if (ate1 || ate2) {
+          st.food = spawnFood(st.snake1, st.snake2, rows, cols);
+          setScore({ s1: st.score1, s2: st.score2 });
+        }
       }
 
       draw(ctx, st, rows, cols);
@@ -169,7 +215,6 @@ export default function SnakeGame({
           newBombs.push(bomb);
         }
       }
-      console.log('Bombes créées:', newBombs);
       setBombs(newBombs);
     } else {
       setBombs([]);
@@ -275,13 +320,9 @@ export default function SnakeGame({
 
   // Vérifier la collision avec une bombe
   const checkBombCollision = (head) => {
-    const collision = difficulty === 'hard' && bombs.some(bomb => 
+    return difficulty === 'hard' && bombs.some(bomb => 
       bomb.x === head.x && bomb.y === head.y
     );
-    if (collision) {
-      console.log('💥 COLLISION AVEC UNE BOMBE !', head, bombs);
-    }
-    return collision;
   };
 
   // Fonction pour dessiner des yeux sur une tête de serpent
@@ -397,47 +438,7 @@ export default function SnakeGame({
     }
   };
 
-  function moveSnake(snake, direction, st) {
-    const head = { ...snake[0] };
-    
-    switch(direction) {
-      case 'up': head.x--; break;
-      case 'down': head.x++; break;
-      case 'left': head.y--; break;
-      case 'right': head.y++; break;
-    }
 
-    // Vérifier collision avec les murs
-    if (head.x < 0 || head.x >= rows || head.y < 0 || head.y >= cols) {
-      console.log('💥 Collision avec un mur !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier collision avec les bombes en mode difficile
-    if (difficulty === 'hard' && checkBombCollision(head)) {
-      console.log('💥 COLLISION AVEC UNE BOMBE !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier collision avec soi-même
-    if (isPositionOccupied(head, snake.slice(1))) {
-      console.log('💥 Collision avec soi-même !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier collision avec l'autre serpent
-    const otherSnake = snake === st.snake1 ? st.snake2 : st.snake1;
-    if (isPositionOccupied(head, otherSnake)) {
-      console.log('💥 Collision avec l\'autre serpent !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier si on mange de la nourriture
-    const ate = head.x === st.food.x && head.y === st.food.y;
-    const newSnake = [head, ...snake.slice(0, ate ? snake.length : snake.length - 1)];
-
-    return { newSnake, collision: false, ate };
-  }
 
   return (
     <div style={{ marginTop: 20, position: 'relative' }}>

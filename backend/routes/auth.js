@@ -23,4 +23,8 @@ router.post('/login', [
 // @desc    Obtenir le profil de l'utilisateur
 router.get('/profile', auth, authController.getProfile);
 
+// @route   GET /api/auth/profile/stats
+// @desc    Obtenir les statistiques détaillées de l'utilisateur
+router.get('/profile/stats', auth, authController.getProfileStats);
+
 module.exports = router; 
