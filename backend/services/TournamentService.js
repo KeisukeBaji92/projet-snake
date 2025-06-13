@@ -410,7 +410,7 @@ class TournamentService {
   static async getActiveTournaments() {
     return await Tournament.find({ status: { $ne: 'completed' } })
       .populate('participants.user', 'username')
-      .populate('participants.script', 'name')
+      .populate('participants.script', 'name code')
       .sort({ created: -1 });
   }
 
@@ -485,12 +485,12 @@ class TournamentService {
   static async getTournamentById(id) {
     const tournament = await Tournament.findById(id)
       .populate('participants.user', 'username')
-      .populate('participants.script', 'name')
+      .populate('participants.script', 'name code')
       .populate({
         path: 'phases.matches',
         populate: {
           path: 'participants.user participants.script',
-          select: 'username name'
+          select: 'username name code'
         }
       });
 
@@ -499,6 +499,73 @@ class TournamentService {
     }
 
     return tournament;
+  }
+
+  // Exécuter automatiquement tous les matchs d'un tournoi
+  static async executeAllMatches(tournamentId) {
+    const tournament = await Tournament.findById(tournamentId)
+      .populate('participants.user', 'username')
+      .populate('participants.script', 'name code');
+
+    if (!tournament) {
+      throw new Error('Tournoi non trouvé');
+    }
+
+    if (tournament.status !== 'running') {
+      throw new Error('Le tournoi doit être en cours pour exécuter les matchs');
+    }
+
+    const participants = tournament.participants;
+    const matchResults = [];
+
+    console.log(`🚀 Exécution de tous les matchs pour le tournoi "${tournament.name}"`);
+    console.log(`👥 ${participants.length} participants`);
+
+    // Créer et exécuter tous les matchs en round-robin
+    for (let i = 0; i < participants.length; i++) {
+      for (let j = i + 1; j < participants.length; j++) {
+        const participant1 = participants[i];
+        const participant2 = participants[j];
+
+        console.log(`\n🥊 Match: ${participant1.user.username} vs ${participant2.user.username}`);
+
+        try {
+          // Créer le match
+          const match = await this.createMatch(
+            tournamentId,
+            'Phase de poules',
+            participant1,
+            participant2,
+            tournament.settings
+          );
+
+          // Exécuter le match
+          const executedMatch = await this.executeMatch(match._id);
+          matchResults.push(executedMatch);
+
+          console.log(`✅ Match terminé - Gagnant: ${executedMatch.result.winner ? 
+            (executedMatch.result.winner.color === 'red' ? participant1.user.username : participant2.user.username) : 
+            'Match nul'}`);
+
+        } catch (error) {
+          console.error(`❌ Erreur lors du match ${participant1.user.username} vs ${participant2.user.username}:`, error.message);
+        }
+      }
+    }
+
+    // Marquer le tournoi comme terminé
+    tournament.status = 'completed';
+    tournament.completedAt = new Date();
+    await tournament.save();
+
+    console.log(`\n🏆 Tournoi "${tournament.name}" terminé !`);
+    console.log(`📊 ${matchResults.length} matchs exécutés`);
+
+    return {
+      tournament,
+      matches: matchResults,
+      totalMatches: matchResults.length
+    };
   }
 }
 
