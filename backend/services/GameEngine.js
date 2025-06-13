@@ -55,8 +55,9 @@ class GameEngine {
       gameState.turn++;
     }
     
-    // Si aucun gagnant après maxTurns, le plus grand score gagne
-    if (!gameState.winner) {
+    // Si aucun gagnant défini par les collisions, déterminer par score
+    if (!gameState.gameOver) {
+      // Timeout atteint, le plus grand score gagne
       if (gameState.score1 > gameState.score2) {
         gameState.winner = 'script1';
       } else if (gameState.score2 > gameState.score1) {
@@ -214,17 +215,33 @@ class GameEngine {
     const snake1Dead = this.isSnakeDead(gameState.snake1, gameState.snake2, rows, cols);
     const snake2Dead = this.isSnakeDead(gameState.snake2, gameState.snake1, rows, cols);
     
-    // Collision frontale
+    // Gérer les collisions selon les vraies règles du jeu
     if (head1.x === head2.x && head1.y === head2.y) {
+      // Collision frontale directe = les deux meurent
       gameState.gameOver = true;
-      gameState.winner = 'draw';
+      if (gameState.score1 > gameState.score2) {
+        gameState.winner = 'script1';
+      } else if (gameState.score2 > gameState.score1) {
+        gameState.winner = 'script2'; 
+      } else {
+        gameState.winner = 'draw';
+      }
     } else if (snake1Dead && snake2Dead) {
+      // Les deux serpents meurent = victoire au score
       gameState.gameOver = true;
-      gameState.winner = 'draw';
+      if (gameState.score1 > gameState.score2) {
+        gameState.winner = 'script1';
+      } else if (gameState.score2 > gameState.score1) {
+        gameState.winner = 'script2';
+      } else {
+        gameState.winner = 'draw';
+      }
     } else if (snake1Dead) {
+      // Serpent 1 meurt = serpent 2 gagne automatiquement
       gameState.gameOver = true;
       gameState.winner = 'script2';
     } else if (snake2Dead) {
+      // Serpent 2 meurt = serpent 1 gagne automatiquement
       gameState.gameOver = true;
       gameState.winner = 'script1';
     }

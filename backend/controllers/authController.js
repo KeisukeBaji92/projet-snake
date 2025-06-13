@@ -143,8 +143,19 @@ exports.getProfileStats = async (req, res) => {
     for (const match of matchesPlayed) {
       console.log(`Match result:`, match.result);
       
-      // Calculer victoires/défaites
+      // Trouver le participant utilisateur pour ce match
+      const userParticipant = match.participants.find(p => {
+        const participantUserId = p.user._id ? p.user._id.toString() : p.user.toString();
+        return participantUserId === userId;
+      });
+      
+      if (!userParticipant) {
+        continue; // Skip si l'utilisateur n'est pas trouvé
+      }
+      
+      // Calculer victoires/défaites avec une logique améliorée
       if (match.result?.winner?.user) {
+        // Cas 1: Il y a un gagnant explicite
         const winnerId = match.result.winner.user._id ? 
           match.result.winner.user._id.toString() : 
           match.result.winner.user.toString();
@@ -154,17 +165,28 @@ exports.getProfileStats = async (req, res) => {
         } else {
           losses++;
         }
+      } else if (match.result?.finalScores) {
+        // Cas 2: Pas de gagnant explicite, regarder les scores
+        const userScore = userParticipant.color === 'red' ? 
+          match.result.finalScores.red : 
+          match.result.finalScores.blue;
+        const opponentScore = userParticipant.color === 'red' ? 
+          match.result.finalScores.blue : 
+          match.result.finalScores.red;
+          
+        if (userScore > opponentScore) {
+          wins++;
+        } else if (userScore < opponentScore) {
+          losses++;
+        } else {
+          draws++;
+        }
       } else {
-        // Pas de gagnant = match nul
+        // Cas 3: Aucune information disponible = match nul
         draws++;
       }
 
       // Calculer scores
-      const userParticipant = match.participants.find(p => {
-        const participantUserId = p.user._id ? p.user._id.toString() : p.user.toString();
-        return participantUserId === userId;
-      });
-      
       if (userParticipant && match.result?.finalScores) {
         const userScore = userParticipant.color === 'red' ? 
           match.result.finalScores.red : 
@@ -176,17 +198,21 @@ exports.getProfileStats = async (req, res) => {
         }
       }
 
-      // Durée du match le plus long (en ms)
-      if (match.result?.duration && match.result.duration > longestMatchDuration) {
-        longestMatchDuration = match.result.duration;
+      // Durée du match le plus long (en ms) avec calcul amélioré
+      let matchDuration = 0;
+      
+      if (match.result?.duration && match.result.duration > 0) {
+        matchDuration = match.result.duration;
+      } else if (match.result?.rounds && match.result.rounds > 0) {
+        // Calculer depuis le nombre de rounds (chaque round = ~200ms)
+        matchDuration = match.result.rounds * 200;
+      } else if (match.replay?.actions?.length > 0) {
+        // Calculer depuis les actions du replay
+        matchDuration = match.replay.actions.length * 100; // 100ms par action
       }
       
-      // Alternative : calculer depuis les actions du replay
-      if (!match.result?.duration && match.replay?.actions?.length > 0) {
-        const estimatedDuration = match.replay.actions.length * 100; // 100ms par action
-        if (estimatedDuration > longestMatchDuration) {
-          longestMatchDuration = estimatedDuration;
-        }
+      if (matchDuration > longestMatchDuration) {
+        longestMatchDuration = matchDuration;
       }
     }
 
