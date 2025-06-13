@@ -1,21 +1,131 @@
 const User = require('../models/User');
 const Script = require('../models/Script');
+const Match = require('../models/Match');
 
-// Obtenir tous les scripts d'un utilisateur
+// Obtenir tous les scripts d'un utilisateur avec leurs statistiques
 exports.getUserScripts = async (req, res) => {
   try {
     console.log('🔍 Recherche des scripts pour l\'utilisateur ID:', req.user.id);
+    
+    // Récupérer les scripts de base
     const scripts = await Script.find({ author: req.user.id }).sort({ created: -1 });
     console.log('📝 Scripts trouvés:', scripts.length);
-    if (scripts.length > 0) {
-      console.log('Premier script:', { name: scripts[0].name, author: scripts[0].author });
-    }
-    res.json(scripts);
+    
+    // Calculer les statistiques pour chaque script
+    const scriptsWithStats = await Promise.all(scripts.map(async (script) => {
+      const stats = await calculateScriptStats(script._id);
+      return {
+        ...script.toObject(),
+        stats
+      };
+    }));
+    
+    res.json(scriptsWithStats);
   } catch (error) {
     console.error('Erreur lors de la récupération des scripts:', error);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
+
+// Fonction pour calculer les statistiques d'un script
+async function calculateScriptStats(scriptId) {
+  try {
+    // Trouver tous les matchs où ce script a participé
+    const matches = await Match.find({
+      'participants.script': scriptId,
+      status: 'completed'
+    }).populate('participants.user participants.script');
+
+    let wins = 0;
+    let losses = 0; 
+    let draws = 0;
+    let totalScore = 0;
+    let maxScore = 0;
+    let totalMatches = matches.length;
+
+    for (const match of matches) {
+      // Trouver le participant avec ce script
+      const scriptParticipant = match.participants.find(p => 
+        p.script._id.toString() === scriptId.toString()
+      );
+
+      if (!scriptParticipant) continue;
+
+      // Calculer le score de ce script dans ce match
+      const scriptScore = scriptParticipant.color === 'red' ? 
+        match.result?.finalScores?.red : 
+        match.result?.finalScores?.blue;
+
+      if (scriptScore !== undefined) {
+        totalScore += scriptScore;
+        if (scriptScore > maxScore) {
+          maxScore = scriptScore;
+        }
+      }
+
+      // Déterminer victoire/défaite/nul
+      if (match.result?.winner?.script) {
+        const winnerId = match.result.winner.script._id ? 
+          match.result.winner.script._id.toString() : 
+          match.result.winner.script.toString();
+          
+        if (winnerId === scriptId.toString()) {
+          wins++;
+        } else {
+          losses++;
+        }
+      } else if (match.result?.finalScores) {
+        // Cas où pas de gagnant explicite, regarder les scores
+        const opponentParticipant = match.participants.find(p => 
+          p.script._id.toString() !== scriptId.toString()
+        );
+        
+        if (opponentParticipant) {
+          const opponentScore = opponentParticipant.color === 'red' ? 
+            match.result.finalScores.red : 
+            match.result.finalScores.blue;
+            
+          if (scriptScore > opponentScore) {
+            wins++;
+          } else if (scriptScore < opponentScore) {
+            losses++;
+          } else {
+            draws++;
+          }
+        } else {
+          draws++;
+        }
+      } else {
+        draws++;
+      }
+    }
+
+    // Calculer le taux de victoire
+    const winRate = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : 0;
+
+    return {
+      totalMatches,
+      wins,
+      losses,
+      draws,
+      winRate: parseFloat(winRate),
+      maxScore,
+      averageScore: totalMatches > 0 ? (totalScore / totalMatches).toFixed(1) : 0
+    };
+
+  } catch (error) {
+    console.error(`Erreur lors du calcul des stats pour le script ${scriptId}:`, error);
+    return {
+      totalMatches: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      winRate: 0,
+      maxScore: 0,
+      averageScore: 0
+    };
+  }
+}
 
 // Créer un nouveau script
 exports.createScript = async (req, res) => {

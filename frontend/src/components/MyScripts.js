@@ -146,34 +146,76 @@ const MyScripts = () => {
             {scripts.map(script => (
               <div
                 key={script._id}
-                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${
+                className={`list-group-item list-group-item-action ${
                   selectedScript?._id === script._id ? 'active' : ''
                 }`}
                 onClick={() => setSelectedScript(script)}
               >
-                <div>
-                  <h5 className="mb-1">{script.name}</h5>
-                  <small>Modifié le {new Date(script.lastModified).toLocaleDateString()}</small>
-                </div>
-                <div>
-                  <button
-                    className="btn btn-sm btn-warning me-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(script);
-                    }}
-                  >
-                    Éditer
-                  </button>
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(script._id);
-                    }}
-                  >
-                    Supprimer
-                  </button>
+                <div className="d-flex justify-content-between align-items-start">
+                  <div className="flex-grow-1">
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <h5 className="mb-0">{script.name}</h5>
+                      <div className="script-actions">
+                        <button
+                          className="btn btn-sm btn-warning me-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(script);
+                          }}
+                        >
+                          Éditer
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(script._id);
+                          }}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Statistiques de performance */}
+                    {script.stats && script.stats.totalMatches > 0 ? (
+                      <div className="script-stats mb-2">
+                        <div className="row text-center">
+                          <div className="col">
+                            <small className="text-muted d-block">Matchs</small>
+                            <span className="badge bg-secondary">{script.stats.totalMatches}</span>
+                          </div>
+                          <div className="col">
+                            <small className="text-muted d-block">Winrate</small>
+                            <span className={`badge ${
+                              script.stats.winRate >= 70 ? 'bg-success' :
+                              script.stats.winRate >= 50 ? 'bg-warning text-dark' :
+                              'bg-danger'
+                            }`}>
+                              {script.stats.winRate}%
+                            </span>
+                          </div>
+                          <div className="col">
+                            <small className="text-muted d-block">Record</small>
+                            <span className="badge bg-info">{script.stats.maxScore} 🍎</span>
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <small className="text-muted">
+                            🏆 {script.stats.wins} · 🔴 {script.stats.losses} · ⚪ {script.stats.draws}
+                          </small>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="script-stats mb-2">
+                        <small className="text-muted">📊 Aucun match joué</small>
+                      </div>
+                    )}
+                    
+                    <small className="text-muted">
+                      Modifié le {new Date(script.lastModified).toLocaleDateString()}
+                    </small>
+                  </div>
                 </div>
               </div>
             ))}
@@ -255,22 +297,69 @@ const MyScripts = () => {
                   ))}
                 </div>
 
+                {/* Statistiques détaillées */}
+                {selectedScript.stats && selectedScript.stats.totalMatches > 0 ? (
+                  <div className="card mb-3 bg-light">
+                    <div className="card-body">
+                      <h5 className="card-title">📊 Statistiques de Performance</h5>
+                      <div className="row text-center">
+                        <div className="col-md-2">
+                          <div className="stat-item">
+                            <div className="stat-value">{selectedScript.stats.totalMatches}</div>
+                            <div className="stat-label">Matchs joués</div>
+                          </div>
+                        </div>
+                        <div className="col-md-2">
+                          <div className="stat-item">
+                            <div className={`stat-value text-${
+                              selectedScript.stats.winRate >= 70 ? 'success' :
+                              selectedScript.stats.winRate >= 50 ? 'warning' :
+                              'danger'
+                            }`}>
+                              {selectedScript.stats.winRate}%
+                            </div>
+                            <div className="stat-label">Taux de victoire</div>
+                          </div>
+                        </div>
+                        <div className="col-md-2">
+                          <div className="stat-item">
+                            <div className="stat-value text-success">{selectedScript.stats.wins}</div>
+                            <div className="stat-label">Victoires</div>
+                          </div>
+                        </div>
+                        <div className="col-md-2">
+                          <div className="stat-item">
+                            <div className="stat-value text-danger">{selectedScript.stats.losses}</div>
+                            <div className="stat-label">Défaites</div>
+                          </div>
+                        </div>
+                        <div className="col-md-2">
+                          <div className="stat-item">
+                            <div className="stat-value text-info">{selectedScript.stats.maxScore}</div>
+                            <div className="stat-label">Record 🍎</div>
+                          </div>
+                        </div>
+                        <div className="col-md-2">
+                          <div className="stat-item">
+                            <div className="stat-value text-primary">{selectedScript.stats.averageScore}</div>
+                            <div className="stat-label">Score moyen</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="alert alert-info">
+                    <i className="fas fa-info-circle me-2"></i>
+                    Ce script n'a pas encore participé à des matchs. Utilisez-le dans un tournoi ou le bac à sable pour voir ses performances !
+                  </div>
+                )}
+
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div>
                     <small className="text-muted">
                       Créé le {new Date(selectedScript.created).toLocaleDateString()}
                     </small>
-                  </div>
-                  <div className="stats">
-                    <span className="badge bg-success me-1">
-                      {selectedScript.stats?.wins || 0} victoires
-                    </span>
-                    <span className="badge bg-danger me-1">
-                      {selectedScript.stats?.losses || 0} défaites
-                    </span>
-                    <span className="badge bg-secondary">
-                      {selectedScript.stats?.draws || 0} nuls
-                    </span>
                   </div>
                 </div>
 

@@ -42,4 +42,74 @@ pre {
 /* Style pour le textarea de code */
 textarea.font-monospace {
   tab-size: 2;
+}
+
+/* Nouveaux styles pour les statistiques de script */
+.script-stats {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.script-stats .badge {
+  font-size: 0.75em;
+  min-width: 40px;
+}
+
+.script-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.list-group-item:hover .script-actions {
+  opacity: 1;
+}
+
+.list-group-item.active .script-actions {
+  opacity: 1;
+}
+
+/* Statistiques détaillées */
+.stat-item {
+  padding: 10px 0;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+/* Responsive pour les statistiques */
+@media (max-width: 768px) {
+  .script-stats .row {
+    text-align: left !important;
+  }
+  
+  .script-stats .col {
+    margin-bottom: 8px;
+  }
+  
+  .stat-item {
+    padding: 5px 0;
+  }
+  
+  .stat-value {
+    font-size: 1.2rem;
+  }
+}
+
+/* Animation pour les badges */
+.script-stats .badge {
+  transition: all 0.3s ease;
+}
+
+.script-stats .badge:hover {
+  transform: scale(1.1);
 } 

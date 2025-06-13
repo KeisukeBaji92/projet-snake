@@ -1,0 +1,323 @@
+.admin-panel {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.admin-title {
+  color: #2c3e50;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin: 0;
+}
+
+/* Navigation tabs */
+.nav-tabs .nav-link {
+  border: none;
+  border-radius: 10px 10px 0 0;
+  padding: 12px 20px;
+  margin-right: 5px;
+  background: #fff;
+  color: #6c757d;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+}
+
+.nav-tabs .nav-link:hover {
+  background: #e9ecef;
+  color: #495057;
+  transform: translateY(-2px);
+}
+
+.nav-tabs .nav-link.active {
+  background: #007bff;
+  color: white;
+  border-bottom: 3px solid #0056b3;
+  box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+}
+
+/* Cards */
+.card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+}
+
+.card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: none;
+  padding: 15px 20px;
+  font-weight: 600;
+}
+
+.card-header h5, .card-header h6 {
+  margin: 0;
+  color: white;
+}
+
+/* Tables */
+.table {
+  margin-bottom: 0;
+}
+
+.table thead th {
+  border-top: none;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+  background: #f8f9fa;
+  padding: 15px 12px;
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #e3f2fd;
+  transform: scale(1.01);
+}
+
+.table td {
+  vertical-align: middle;
+  padding: 12px;
+  border-top: 1px solid #ededed;
+}
+
+/* Badges */
+.badge {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.badge.bg-info {
+  background: linear-gradient(45deg, #17a2b8, #20c997) !important;
+}
+
+.badge.bg-warning {
+  background: linear-gradient(45deg, #ffc107, #ff8c00) !important;
+}
+
+.badge.bg-danger {
+  background: linear-gradient(45deg, #dc3545, #c82333) !important;
+}
+
+.badge.bg-primary {
+  background: linear-gradient(45deg, #007bff, #0056b3) !important;
+}
+
+.badge.bg-success {
+  background: linear-gradient(45deg, #28a745, #20c997) !important;
+}
+
+/* Buttons */
+.btn {
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: all 0.3s ease;
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn-outline-info:hover {
+  background: linear-gradient(45deg, #17a2b8, #20c997);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(23,162,184,0.4);
+}
+
+.btn-outline-danger:hover {
+  background: linear-gradient(45deg, #dc3545, #c82333);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220,53,69,0.4);
+}
+
+.btn-outline-primary:hover {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,123,255,0.4);
+}
+
+.btn-outline-secondary:hover {
+  background: linear-gradient(45deg, #6c757d, #545b62);
+  border-color: transparent;
+  transform: translateY(-2px);
+}
+
+/* Action buttons group */
+.btn-group-sm .btn {
+  padding: 4px 8px;
+  font-size: 0.875rem;
+  margin: 0 2px;
+}
+
+/* Participants list */
+.participants-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.participants-list .bg-light {
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.participants-list .bg-light:hover {
+  background: #e3f2fd !important;
+  border-color: #2196f3;
+  transform: translateX(5px);
+}
+
+/* List group */
+.list-group-item {
+  border: 1px solid #e9ecef;
+  border-radius: 8px !important;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+.list-group-item:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+}
+
+/* Alerts */
+.alert {
+  border: none;
+  border-radius: 10px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.alert-danger {
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  color: #721c24;
+}
+
+.alert-success {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  color: #155724;
+}
+
+/* Loading spinner */
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.3em;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .admin-panel .container-fluid {
+    padding: 15px;
+  }
+  
+  .nav-tabs .nav-link {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    margin-right: 2px;
+  }
+  
+  .admin-title {
+    font-size: 1.5rem;
+  }
+  
+  .table-responsive {
+    font-size: 0.85rem;
+  }
+  
+  .btn-group-sm .btn {
+    padding: 3px 6px;
+    font-size: 0.75rem;
+  }
+  
+  .card-header {
+    padding: 12px 15px;
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-pane.active {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Scroll bar personnalisé */
+.participants-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.participants-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.participants-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  border-radius: 10px;
+}
+
+.participants-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #0056b3, #004085);
+}
+
+/* Tournament status cards */
+.border-secondary {
+  border-color: #6c757d !important;
+}
+
+.border-secondary:hover {
+  border-color: #007bff !important;
+}
+
+/* User stats in header */
+.text-muted {
+  font-size: 0.9rem;
+}
+
+.small {
+  font-size: 0.8rem !important;
+} 

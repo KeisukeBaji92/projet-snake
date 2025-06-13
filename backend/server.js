@@ -20,6 +20,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/scripts', require('./routes/scripts'));
 app.use('/api/tournaments', require('./routes/tournaments'));
 app.use('/api/matches', require('./routes/matches'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Route de test
 app.get('/', (req, res) => {

@@ -10,6 +10,8 @@ import Profile from './components/Profile';
 import MyScripts from './components/MyScripts';
 import Tournaments from './components/Tournaments';
 import TestTournamentMatch from './components/TestTournamentMatch';
+import AdminPanel from './components/AdminPanel';
+import ReplayPage from './components/ReplayPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
@@ -36,6 +38,8 @@ function App() {
               <Route path="/scripts" element={<MyScripts />} />
               <Route path="/tournaments" element={<Tournaments />} />
               <Route path="/test-match" element={<TestTournamentMatch />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/replay/:matchId" element={<ReplayPage />} />
             </Routes>
         </div>
         </div>
