@@ -18,7 +18,7 @@ const Tournaments = () => {
     description: '',
     maxParticipants: 8,
     difficulty: 'normal',
-    type: 'elimination'
+    type: 'round_robin'
   });
   const [error, setError] = useState('');
 
@@ -395,10 +395,12 @@ const Tournaments = () => {
                   value={newTournament.type}
                   onChange={(e) => setNewTournament({...newTournament, type: e.target.value})}
                 >
-                  <option value="elimination">Élimination directe</option>
-                  <option value="round_robin">Round Robin</option>
-                  <option value="swiss">Système suisse</option>
+                  <option value="round_robin">Round Robin (Tous contre tous)</option>
                 </select>
+                <small className="form-text text-muted">
+                  En mode Round Robin, chaque participant joue contre tous les autres.
+                  Pour N participants : {newTournament.maxParticipants} × {newTournament.maxParticipants - 1} ÷ 2 = {Math.floor(newTournament.maxParticipants * (newTournament.maxParticipants - 1) / 2)} matchs maximum
+                </small>
               </div>
               <button type="submit" className="btn btn-success">Créer le tournoi</button>
             </form>

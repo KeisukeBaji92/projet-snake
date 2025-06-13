@@ -17,8 +17,8 @@ const tournamentSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['elimination', 'round_robin', 'swiss'],
-    default: 'elimination'
+    enum: ['round_robin'],
+    default: 'round_robin'
   },
   maxParticipants: {
     type: Number,
