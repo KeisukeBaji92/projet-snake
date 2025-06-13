@@ -4,7 +4,12 @@ const Script = require('../models/Script');
 // Obtenir tous les scripts d'un utilisateur
 exports.getUserScripts = async (req, res) => {
   try {
+    console.log('🔍 Recherche des scripts pour l\'utilisateur ID:', req.user.id);
     const scripts = await Script.find({ author: req.user.id }).sort({ created: -1 });
+    console.log('📝 Scripts trouvés:', scripts.length);
+    if (scripts.length > 0) {
+      console.log('Premier script:', { name: scripts[0].name, author: scripts[0].author });
+    }
     res.json(scripts);
   } catch (error) {
     console.error('Erreur lors de la récupération des scripts:', error);

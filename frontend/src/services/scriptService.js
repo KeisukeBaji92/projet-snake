@@ -4,7 +4,7 @@ export const scriptService = {
   // Récupérer tous les scripts de l'utilisateur
   getUserScripts: async () => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/scripts`, {
+    const response = await fetch(`${API_URL}/scripts/user`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
