@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import MyScripts from './components/MyScripts';
 import Tournaments from './components/Tournaments';
+import TestTournamentMatch from './components/TestTournamentMatch';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
@@ -32,6 +33,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/scripts" element={<MyScripts />} />
               <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/test-match" element={<TestTournamentMatch />} />
             </Routes>
         </div>
         </div>

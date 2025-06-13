@@ -234,6 +234,15 @@ class TournamentService {
       // Simuler le match
       const { result, replay } = await engine.simulateMatch(script1, script2);
 
+      // Corriger le format des événements dans le replay
+      const fixedReplay = {
+        ...replay,
+        actions: replay.actions.map(action => ({
+          ...action,
+          events: Array.isArray(action.events) ? action.events : []
+        }))
+      };
+
       // Mettre à jour le match avec les résultats
       match.result = {
         ...result,
@@ -241,7 +250,7 @@ class TournamentService {
         loser: this.determineLoser(match, result.winner)
       };
 
-      match.replay = replay;
+      match.replay = fixedReplay;
       match.status = 'completed';
       match.completedAt = new Date();
 
