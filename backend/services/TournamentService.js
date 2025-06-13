@@ -406,9 +406,9 @@ class TournamentService {
     return 'Finale';
   }
 
-  // Obtenir les tournois actifs
+  // Obtenir tous les tournois (actifs ET completed pour pouvoir voir les replays)
   static async getActiveTournaments() {
-    return await Tournament.find({ status: { $ne: 'completed' } })
+    return await Tournament.find({})
       .populate('participants.user', 'username')
       .populate('participants.script', 'name code')
       .sort({ created: -1 });

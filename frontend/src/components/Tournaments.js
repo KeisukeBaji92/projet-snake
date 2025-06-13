@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import './Tournaments.css';
 
 const Tournaments = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState([]);
   const [userScripts, setUserScripts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedScript, setSelectedScript] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedTournament, setSelectedTournament] = useState(null);
+  const [matches, setMatches] = useState([]);
   const [newTournament, setNewTournament] = useState({
     name: '',
     description: '',
@@ -120,22 +124,32 @@ const Tournaments = () => {
 
   const handleStartTournament = async (tournamentId) => {
     try {
+      setError('');
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/api/tournaments/${tournamentId}/start`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Erreur lors du démarrage du tournoi');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors du démarrage');
       }
 
+      const result = await response.json();
+      console.log(`✅ ${result.message}`);
+      
+      // Afficher le succès
+      setError(`✅ ${result.message}`);
+      
+      // Recharger les tournois
       loadTournaments();
     } catch (error) {
       console.error('Erreur lors du démarrage du tournoi:', error);
-      setError('Erreur lors du démarrage du tournoi');
+      setError(`❌ Erreur lors du démarrage: ${error.message}`);
     }
   };
 
@@ -185,12 +199,127 @@ const Tournaments = () => {
     return <span className={`difficulty-badge ${badge.class}`}>{badge.text}</span>;
   };
 
+  const viewTournamentMatches = async (tournament) => {
+    try {
+      setSelectedTournament(tournament);
+      const response = await fetch(`http://localhost:5000/api/tournaments/${tournament._id}/matches`);
+      const matchesData = await response.json();
+      setMatches(matchesData);
+    } catch (err) {
+      setError('Erreur lors du chargement des matchs');
+    }
+  };
+
+  const viewMatchReplay = (match) => {
+    navigate(`/test-match`, { state: { preselectedMatch: match } });
+  };
+
   const isUserRegistered = (tournament) => {
     return user && tournament.participants.some(p => p.user._id === user.id);
   };
 
   if (loading) {
     return <div className="loading">Chargement des tournois...</div>;
+  }
+
+  // Vue des matchs d'un tournoi sélectionné
+  if (selectedTournament) {
+    return (
+      <div className="tournaments-container">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <button 
+            className="btn btn-secondary"
+            onClick={() => {
+              setSelectedTournament(null);
+              setMatches([]);
+            }}
+          >
+            ← Retour aux tournois
+          </button>
+          <h2>🏆 {selectedTournament.name}</h2>
+          {getStatusBadge(selectedTournament.status)}
+        </div>
+
+        <div className="row mb-4">
+          <div className="col-md-8">
+            <div className="card">
+              <div className="card-body">
+                <p><strong>Description:</strong> {selectedTournament.description}</p>
+                <p><strong>Participants:</strong> {selectedTournament.participants?.length || 0}</p>
+                <p><strong>Type:</strong> {selectedTournament.type}</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="card">
+              <div className="card-header">👥 Participants</div>
+              <div className="card-body">
+                {selectedTournament.participants?.map((participant, index) => (
+                  <div key={index} className="d-flex justify-content-between mb-2">
+                    <span className="fw-bold">{participant.user?.username}</span>
+                    <span className="text-muted">{participant.script?.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h5>🥊 Matchs du tournoi ({matches.length})</h5>
+          </div>
+          <div className="card-body">
+            {matches.length === 0 ? (
+              <div className="alert alert-info">Aucun match trouvé pour ce tournoi</div>
+            ) : (
+              <div className="row">
+                {matches.map((match, index) => {
+                  const user1 = match.participants[0]?.user?.username || 'Joueur 1';
+                  const user2 = match.participants[1]?.user?.username || 'Joueur 2';
+                  const script1 = match.participants[0]?.script?.name || 'Script 1';
+                  const script2 = match.participants[1]?.script?.name || 'Script 2';
+                  
+                  const winner = match.result?.winner ? 
+                    (match.result.winner.color === 'red' ? user1 : user2) : 
+                    'Match nul';
+                  
+                  const hasReplay = match.replay?.actions?.length > 0;
+                  const frames = match.replay?.actions?.length || 0;
+
+                  return (
+                    <div key={match._id} className="col-md-6 mb-3">
+                      <div className="card">
+                        <div className="card-header">
+                          <h6>Match {index + 1}</h6>
+                          <small className="text-muted">{new Date(match.created).toLocaleString()}</small>
+                        </div>
+                        <div className="card-body">
+                          <p><strong>{user1}</strong> ({script1}) vs <strong>{user2}</strong> ({script2})</p>
+                          <p>🏆 <strong>Gagnant:</strong> {winner}</p>
+                          <p>🎬 <strong>Frames:</strong> {frames}</p>
+                          
+                          {hasReplay ? (
+                            <button 
+                              className="btn btn-primary btn-sm"
+                              onClick={() => viewMatchReplay(match)}
+                            >
+                              📺 Voir le replay
+                            </button>
+                          ) : (
+                            <span className="text-muted">Pas de replay disponible</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Debug
@@ -200,7 +329,11 @@ const Tournaments = () => {
   return (
     <div className="tournaments-container">
       <h2>Tournois</h2>
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && (
+        <div className={`alert ${error.startsWith('✅') ? 'alert-success' : 'alert-danger'}`}>
+          {error}
+        </div>
+      )}
 
 
 
@@ -321,15 +454,25 @@ const Tournaments = () => {
                       className="btn btn-success me-2"
                       onClick={() => handleStartTournament(tournament._id)}
                     >
-                      Démarrer le tournoi
+                      🚀 Démarrer le tournoi
                     </button>
                   )}
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => handleDeleteTournament(tournament._id)}
-                  >
-                    Supprimer
-                  </button>
+                  {(tournament.status === 'completed' || tournament.status === 'running') && (
+                    <button
+                      className="btn btn-primary me-2"
+                      onClick={() => viewTournamentMatches(tournament)}
+                    >
+                      🎬 Voir les matchs/replays
+                    </button>
+                  )}
+                  {tournament.status === 'registering' && (
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleDeleteTournament(tournament._id)}
+                    >
+                      🗑️ Supprimer
+                    </button>
+                  )}
                 </div>
               )}
             </div>

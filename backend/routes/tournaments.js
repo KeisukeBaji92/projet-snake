@@ -44,11 +44,20 @@ router.delete('/:id', [auth, isAdmin], async (req, res) => {
   }
 });
 
-// POST /api/tournaments/:id/start - Démarrer un tournoi (admin seulement)
+// POST /api/tournaments/:id/start - Démarrer et exécuter automatiquement un tournoi (admin seulement)
 router.post('/:id/start', [auth, isAdmin], async (req, res) => {
   try {
+    // 1. Démarrer le tournoi (change status en "running")
     const tournament = await TournamentService.startTournament(req.params.id);
-    res.json(tournament);
+    
+    // 2. Exécuter automatiquement tous les matchs
+    const result = await TournamentService.executeAllMatches(req.params.id);
+    
+    res.json({
+      tournament: result.tournament,
+      message: `Tournoi démarré et ${result.totalMatches} matchs exécutés automatiquement`,
+      matchesExecuted: result.totalMatches
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -59,30 +68,6 @@ router.post('/:id/execute', [auth, isAdmin], async (req, res) => {
   try {
     const result = await TournamentService.executeAllMatches(req.params.id);
     res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST /api/tournaments/:id/register - S'inscrire à un tournoi
-router.post('/:id/register', auth, async (req, res) => {
-  try {
-    const tournament = await TournamentService.registerParticipant(
-      req.params.id,
-      req.user.id,
-      req.body.scriptId
-    );
-    res.json(tournament);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/tournaments/:id - Obtenir les détails d'un tournoi
-router.get('/:id', async (req, res) => {
-  try {
-    const tournament = await TournamentService.getTournamentById(req.params.id);
-    res.json(tournament);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -114,6 +99,7 @@ router.get('/:id/matches', async (req, res) => {
       .populate('participants.script', 'name')
       .sort({ created: 1 });
     
+    // S'assurer que tous les champs nécessaires sont inclus (replay, result, etc.)
     res.json(matches);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -182,6 +168,30 @@ router.get('/:id/leaderboard', async (req, res) => {
     });
 
     res.json(leaderboard);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/tournaments/:id/register - S'inscrire à un tournoi
+router.post('/:id/register', auth, async (req, res) => {
+  try {
+    const tournament = await TournamentService.registerParticipant(
+      req.params.id,
+      req.user.id,
+      req.body.scriptId
+    );
+    res.json(tournament);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/tournaments/:id - Obtenir les détails d'un tournoi
+router.get('/:id', async (req, res) => {
+  try {
+    const tournament = await TournamentService.getTournamentById(req.params.id);
+    res.json(tournament);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
