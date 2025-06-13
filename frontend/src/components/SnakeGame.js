@@ -90,15 +90,15 @@ export default function SnakeGame({
       let move2 = 'left';
 
       try {
-        move1 = userMove(getGameState(true)) || 'right';
+        move1 = userMove(getGameState(true, st)) || 'right';
         if (mode === 'script-vs-script' && userMove2) {
-          move2 = userMove2(getGameState(false)) || 'left';
+          move2 = userMove2(getGameState(false, st)) || 'left';
         } else if (mode === 'mirror') {
           // Mode miroir : le même script s'affronte depuis deux positions différentes
-          move2 = userMove(getGameState(false)) || 'left';
+          move2 = userMove(getGameState(false, st)) || 'left';
         } else {
           // Mode vs greedy : utiliser smartBot avec le bon état
-          move2 = smartBot(getGameState(false), st.prevDir2) || 'left';
+          move2 = smartBot(getGameState(false, st), st.prevDir2) || 'left';
         }
       } catch (error) {
         console.error('Erreur dans l\'exécution du script:', error);
@@ -228,7 +228,7 @@ export default function SnakeGame({
   };
 
   // Obtenir la grille de vision limitée pour un serpent
-  const getLimitedVisionGrid = (head) => {
+  const getLimitedVisionGrid = (head, gameState = state.current) => {
     const grid = Array(VISION_RANGE * 2 + 1).fill().map(() => 
       Array(VISION_RANGE * 2 + 1).fill(0)
     );
@@ -245,9 +245,9 @@ export default function SnakeGame({
         }
 
         // Vérifier le contenu de la case
-        if (isPositionOccupied({ x, y }, state.current.snake1) || isPositionOccupied({ x, y }, state.current.snake2)) {
+        if (isPositionOccupied({ x, y }, gameState.snake1) || isPositionOccupied({ x, y }, gameState.snake2)) {
           grid[i + VISION_RANGE][j + VISION_RANGE] = 3; // Corps de serpent
-        } else if (state.current.food.x === x && state.current.food.y === y) {
+        } else if (gameState.food.x === x && gameState.food.y === y) {
           grid[i + VISION_RANGE][j + VISION_RANGE] = 1; // Nourriture
         } else if (difficulty === 'hard' && bombs.some(b => b.x === x && b.y === y)) {
           grid[i + VISION_RANGE][j + VISION_RANGE] = 2; // Bombe
@@ -258,11 +258,11 @@ export default function SnakeGame({
   };
 
   // Préparer l'état du jeu pour les scripts (unifié) avec vision limitée en mode difficile
-  const getGameState = (isSnake1) => {
-    const head = isSnake1 ? state.current.snake1[0] : state.current.snake2[0];
-    const mySnake = isSnake1 ? state.current.snake1 : state.current.snake2;
-    const enemySnake = isSnake1 ? state.current.snake2 : state.current.snake1;
-    const food = state.current.food;
+  const getGameState = (isSnake1, gameState = state.current) => {
+    const head = isSnake1 ? gameState.snake1[0] : gameState.snake2[0];
+    const mySnake = isSnake1 ? gameState.snake1 : gameState.snake2;
+    const enemySnake = isSnake1 ? gameState.snake2 : gameState.snake1;
+    const food = gameState.food;
 
     if (difficulty === 'hard') {
       // Mode difficile : vision limitée à 3 cases autour de la tête
@@ -293,8 +293,8 @@ export default function SnakeGame({
         food: visibleFood,
         bombs: visibleBombs, // Ajouter les bombes à l'état
         score: {
-          me: isSnake1 ? state.current.score1 : state.current.score2,
-          opponent: isSnake1 ? state.current.score2 : state.current.score1
+          me: isSnake1 ? gameState.score1 : gameState.score2,
+          opponent: isSnake1 ? gameState.score2 : gameState.score1
         },
         difficulty: 'hard',
         rows: rows,
@@ -309,8 +309,8 @@ export default function SnakeGame({
         food: food,
         bombs: [], // Pas de bombes en mode normal
         score: {
-          me: isSnake1 ? state.current.score1 : state.current.score2,
-          opponent: isSnake1 ? state.current.score2 : state.current.score1
+          me: isSnake1 ? gameState.score1 : gameState.score2,
+          opponent: isSnake1 ? gameState.score2 : gameState.score1
         },
         difficulty: 'normal',
         rows: rows,
