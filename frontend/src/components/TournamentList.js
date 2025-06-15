@@ -13,6 +13,8 @@ const TournamentList = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [matches, setMatches] = useState([]);
+  const [showCompleted, setShowCompleted] = useState(true);
+  const [showActive, setShowActive] = useState(true);
   const [newTournament, setNewTournament] = useState({
     name: '',
     description: '',
@@ -214,6 +216,18 @@ const TournamentList = () => {
     return tournament.participants.some(p => p.user._id === user.id);
   };
 
+  const getFilteredTournaments = () => {
+    return tournaments.filter(tournament => {
+      const isCompleted = tournament.status === 'completed';
+      const isActive = tournament.status === 'registering' || tournament.status === 'running';
+      
+      if (isCompleted && !showCompleted) return false;
+      if (isActive && !showActive) return false;
+      
+      return true;
+    });
+  };
+
   if (loading) {
     return (
       <div className="tournaments-container">
@@ -232,6 +246,26 @@ const TournamentList = () => {
       <div className="tournaments-header">
         <h1>🏆 Tournois Snake Arena</h1>
         <p className="subtitle">Participez aux compétitions et montrez vos compétences !</p>
+        
+        {/* Filtres d'affichage */}
+        <div className="filter-controls">
+          <div className="btn-group" role="group" aria-label="Filtres de tournois">
+            <button 
+              type="button" 
+              className={`btn ${showActive ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setShowActive(!showActive)}
+            >
+              {showActive ? '👁️' : '👁️‍🗨️'} Actifs ({tournaments.filter(t => t.status === 'registering' || t.status === 'running').length})
+            </button>
+            <button 
+              type="button" 
+              className={`btn ${showCompleted ? 'btn-success' : 'btn-outline-success'}`}
+              onClick={() => setShowCompleted(!showCompleted)}
+            >
+              {showCompleted ? '👁️' : '👁️‍🗨️'} Terminés ({tournaments.filter(t => t.status === 'completed').length})
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -342,8 +376,8 @@ const TournamentList = () => {
 
       {/* Liste des tournois */}
       <div className="tournaments-grid">
-        {tournaments.length > 0 ? (
-          tournaments.map(tournament => (
+        {getFilteredTournaments().length > 0 ? (
+          getFilteredTournaments().map(tournament => (
             <div key={tournament._id} className="tournament-card">
               <div className="tournament-header">
                 <h3 className="tournament-title">{tournament.name}</h3>
@@ -473,15 +507,38 @@ const TournamentList = () => {
         ) : (
           <div className="empty-state">
             <div className="empty-icon">🏟️</div>
-            <h3>Aucun tournoi disponible</h3>
-            <p>Il n'y a actuellement aucun tournoi. Revenez plus tard !</p>
-            {user?.role === 'admin' && (
-              <button 
-                className="btn btn-primary"
-                onClick={() => setShowCreateForm(true)}
-              >
-                Créer le premier tournoi
-              </button>
+            {tournaments.length === 0 ? (
+              <>
+                <h3>Aucun tournoi disponible</h3>
+                <p>Il n'y a actuellement aucun tournoi. Revenez plus tard !</p>
+                {user?.role === 'admin' && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => setShowCreateForm(true)}
+                  >
+                    Créer le premier tournoi
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <h3>Aucun tournoi affiché</h3>
+                <p>Tous les tournois sont masqués par vos filtres. Ajustez les filtres ci-dessus pour voir les tournois.</p>
+                <div className="mt-3">
+                  <button 
+                    className="btn btn-outline-primary me-2"
+                    onClick={() => setShowActive(true)}
+                  >
+                    Afficher les tournois actifs
+                  </button>
+                  <button 
+                    className="btn btn-outline-success"
+                    onClick={() => setShowCompleted(true)}
+                  >
+                    Afficher les tournois terminés
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}

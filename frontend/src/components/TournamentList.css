@@ -28,6 +28,72 @@
   font-weight: 300;
 }
 
+/* Contrôles de filtrage */
+.filter-controls {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.filter-controls .btn-group {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-radius: 25px;
+  overflow: hidden;
+}
+
+.filter-controls .btn {
+  border-radius: 0;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  position: relative;
+}
+
+.filter-controls .btn:first-child {
+  border-top-left-radius: 25px;
+  border-bottom-left-radius: 25px;
+}
+
+.filter-controls .btn:last-child {
+  border-top-right-radius: 25px;
+  border-bottom-right-radius: 25px;
+}
+
+.filter-controls .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.filter-controls .btn-outline-primary {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.filter-controls .btn-outline-primary:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.filter-controls .btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+}
+
+.filter-controls .btn-outline-success {
+  background: white;
+  color: #28a745;
+  border: 2px solid #28a745;
+}
+
+.filter-controls .btn-outline-success:hover {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  transform: translateY(-2px);
+}
+
 /* Section admin */
 .admin-section {
   margin-bottom: 2rem;
