@@ -239,9 +239,9 @@ const Profile = () => {
                   <div className="admin-actions">
                     <button 
                       className="btn btn-outline-primary me-2"
-                      onClick={() => navigate('/test-match')}
+                      onClick={() => navigate('/replays')}
                     >
-                      🧪 Test Match
+                      🎬 Replays
                     </button>
                     <button 
                       className="btn btn-outline-info me-2"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TournamentMatchViewer from './TournamentMatchViewer';
 
-const TestTournamentMatch = () => {
+const Replays = () => {
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -18,7 +18,9 @@ const TestTournamentMatch = () => {
     try {
       const response = await fetch('http://localhost:5000/api/tournaments');
       const data = await response.json();
-      setTournaments(data);
+      // Filtrer pour ne montrer que les tournois terminés qui ont des matchs
+      const completedTournaments = data.filter(t => t.status === 'completed');
+      setTournaments(completedTournaments);
       setLoading(false);
     } catch (err) {
       setError('Erreur lors du chargement des tournois');
@@ -264,7 +266,7 @@ const TestTournamentMatch = () => {
   // Vue principale avec liste des tournois
   return (
     <div className="container my-4">
-      <h2>🏆 Gestionnaire de Tournois</h2>
+      <h2>🎬 Replays des Tournois</h2>
       
       {error && (
         <div className="alert alert-danger" role="alert">
@@ -274,11 +276,11 @@ const TestTournamentMatch = () => {
 
       <div className="card">
         <div className="card-header">
-          <h5>Sélectionnez un tournoi pour voir ses matchs</h5>
+          <h5>📺 Sélectionnez un tournoi pour voir ses replays</h5>
         </div>
         <div className="card-body">
           {tournaments.length === 0 ? (
-            <p className="text-muted">Aucun tournoi disponible</p>
+            <p className="text-muted">Aucun tournoi terminé disponible pour les replays</p>
           ) : (
             <div className="list-group">
               {tournaments.map(tournament => (
@@ -330,4 +332,4 @@ const TestTournamentMatch = () => {
   );
 };
 
-export default TestTournamentMatch; 
+export default Replays; 

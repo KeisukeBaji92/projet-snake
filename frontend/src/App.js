@@ -11,7 +11,7 @@ import MyScripts from './components/MyScripts';
 import TournamentList from './components/TournamentList';
 import TournamentDetail from './components/TournamentDetail';
 import Leaderboard from './components/Leaderboard';
-import TestTournamentMatch from './components/TestTournamentMatch';
+import Replays from './components/Replays';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
@@ -39,7 +39,7 @@ function App() {
               <Route path="/tournaments" element={<TournamentList />} />
               <Route path="/tournament/:id" element={<TournamentDetail />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/test-match" element={<TestTournamentMatch />} />
+              <Route path="/replays" element={<Replays />} />
             </Routes>
         </div>
         </div>
