@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
   // Récupérer le token du header Authorization
   const authHeader = req.header('Authorization');
 
@@ -18,7 +19,20 @@ module.exports = (req, res, next) => {
 
     // Vérifier le token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = decoded;
+    
+    // Récupérer l'utilisateur complet pour avoir le rôle
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      return res.status(401).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    req.user = {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role
+    };
+    
     next();
   } catch (error) {
     console.error('Erreur d\'authentification:', error);

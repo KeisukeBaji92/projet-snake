@@ -37,6 +37,11 @@ const Navigation = () => {
                 <li className="nav-item">
                   <Link className="nav-link" to="/replays">🎬 Replays</Link>
                 </li>
+                {user.role === 'admin' && (
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/admin">👑 Administration</Link>
+                  </li>
+                )}
               </>
             )}
           </ul>

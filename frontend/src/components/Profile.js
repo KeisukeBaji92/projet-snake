@@ -238,6 +238,12 @@ const Profile = () => {
                   </p>
                   <div className="admin-actions">
                     <button 
+                      className="btn btn-outline-warning me-2"
+                      onClick={() => navigate('/admin')}
+                    >
+                      👑 Gestion Utilisateurs
+                    </button>
+                    <button 
                       className="btn btn-outline-primary me-2"
                       onClick={() => navigate('/replays')}
                     >

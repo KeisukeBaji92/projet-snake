@@ -12,6 +12,7 @@ import TournamentList from './components/TournamentList';
 import TournamentDetail from './components/TournamentDetail';
 import Leaderboard from './components/Leaderboard';
 import Replays from './components/Replays';
+import AdminPanel from './components/AdminPanel';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
@@ -40,6 +41,7 @@ function App() {
               <Route path="/tournament/:id" element={<TournamentDetail />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/replays" element={<Replays />} />
+              <Route path="/admin" element={<AdminPanel />} />
             </Routes>
         </div>
         </div>
