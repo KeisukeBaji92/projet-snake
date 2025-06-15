@@ -255,14 +255,14 @@ const TournamentList = () => {
               className={`btn ${showActive ? 'btn-primary' : 'btn-outline-primary'}`}
               onClick={() => setShowActive(!showActive)}
             >
-              {showActive ? '👁️' : '👁️‍🗨️'} Actifs ({tournaments.filter(t => t.status === 'registering' || t.status === 'running').length})
+              {showActive ? '✅ Afficher' : '❌ Masquer'} Tournois Actifs ({tournaments.filter(t => t.status === 'registering' || t.status === 'running').length})
             </button>
             <button 
               type="button" 
               className={`btn ${showCompleted ? 'btn-success' : 'btn-outline-success'}`}
               onClick={() => setShowCompleted(!showCompleted)}
             >
-              {showCompleted ? '👁️' : '👁️‍🗨️'} Terminés ({tournaments.filter(t => t.status === 'completed').length})
+              {showCompleted ? '✅ Afficher' : '❌ Masquer'} Tournois Terminés ({tournaments.filter(t => t.status === 'completed').length})
             </button>
           </div>
         </div>
@@ -483,12 +483,14 @@ const TournamentList = () => {
                     >
                       📋 Détails
                     </button>
-                    <button 
-                      className="btn btn-danger btn-sm"
-                      onClick={() => handleDeleteTournament(tournament._id)}
-                    >
-                      🗑️ Supprimer
-                    </button>
+                    {(tournament.status === 'registering' || tournament.status === 'completed') && (
+                      <button 
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDeleteTournament(tournament._id)}
+                      >
+                        🗑️ Supprimer
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -529,13 +531,13 @@ const TournamentList = () => {
                     className="btn btn-outline-primary me-2"
                     onClick={() => setShowActive(true)}
                   >
-                    Afficher les tournois actifs
+                    ✅ Afficher les tournois actifs
                   </button>
                   <button 
                     className="btn btn-outline-success"
                     onClick={() => setShowCompleted(true)}
                   >
-                    Afficher les tournois terminés
+                    ✅ Afficher les tournois terminés
                   </button>
                 </div>
               </>
