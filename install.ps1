@@ -1,8 +1,8 @@
 # ============================================================================
 # SCRIPT D'INSTALLATION UNIVERSEL - SNAKE ARENA 🐍
 # ============================================================================
-# Ce script détecte automatiquement votre système d'exploitation et lance
-# le script d'installation approprié pour Snake Arena.
+# Ce script detecte automatiquement votre systeme d'exploitation et lance
+# le script d'installation approprie pour Snake Arena.
 # ============================================================================
 
 param(
@@ -47,21 +47,21 @@ function Show-Help {
     
 🐍 SCRIPT D'INSTALLATION UNIVERSEL SNAKE ARENA 🐍
 
-Ce script détecte automatiquement votre OS et lance l'installation appropriée.
+Ce script detecte automatiquement votre OS et lance l'installation appropriee.
 
 Usage: .\install.ps1 [OPTIONS]
 
 Options:
-    -Force      : Force la réinstallation même si les composants existent
+    -Force      : Force la reinstallation meme si les composants existent
     -SkipMongo  : Ignore l'installation MongoDB (si vous utilisez MongoDB Atlas)
     -Help       : Affiche cette aide
 
 Exemples:
     .\install.ps1                    # Installation automatique
-    .\install.ps1 -Force             # Réinstallation complète
+    .\install.ps1 -Force             # Reinstallation complete
     .\install.ps1 -SkipMongo         # Sans MongoDB local
 
-Systèmes supportés:
+Systemes supportes:
     - Windows 10/11 (PowerShell)
     - Linux (Ubuntu, Debian, CentOS, RHEL)
     - macOS (avec Homebrew)
@@ -74,9 +74,9 @@ if ($Help) {
     exit 0
 }
 
-Write-Title "DÉTECTION DU SYSTÈME D'EXPLOITATION"
+Write-Title "DETECTION DU SYSTEME D'EXPLOITATION"
 
-# Détecter l'OS
+# Detecter l'OS
 $OS = $null
 if ($IsWindows -or $env:OS -eq "Windows_NT") {
     $OS = "Windows"
@@ -93,12 +93,12 @@ if ($IsWindows -or $env:OS -eq "Windows_NT") {
     }
 }
 
-Write-Info "Système détecté: $OS"
+Write-Info "Systeme detecte: $OS"
 
-# Lancer le script approprié
+# Lancer le script approprie
 switch ($OS) {
     "Windows" {
-        Write-Info "Lancement du script d'installation Windows..."
+        Write-Info "Lancement du script d installation Windows..."
         $scriptPath = Join-Path $PSScriptRoot "install-snake-arena.ps1"
         if (Test-Path $scriptPath) {
             $params = @()
@@ -107,13 +107,13 @@ switch ($OS) {
             
             & $scriptPath @params
         } else {
-            Write-Error "Script d'installation Windows non trouvé: $scriptPath"
+            Write-Error "Script d installation Windows non trouve: $scriptPath"
             exit 1
         }
     }
     
     "Linux" {
-        Write-Info "Lancement du script d'installation Linux..."
+        Write-Info "Lancement du script d installation Linux..."
         $scriptPath = Join-Path $PSScriptRoot "install-snake-arena.sh"
         if (Test-Path $scriptPath) {
             chmod +x $scriptPath
@@ -123,13 +123,13 @@ switch ($OS) {
             
             & bash $scriptPath @params
         } else {
-            Write-Error "Script d'installation Linux non trouvé: $scriptPath"
+            Write-Error "Script d installation Linux non trouve: $scriptPath"
             exit 1
         }
     }
     
     "macOS" {
-        Write-Info "Lancement du script d'installation macOS..."
+        Write-Info "Lancement du script d installation macOS..."
         $scriptPath = Join-Path $PSScriptRoot "install-snake-arena.sh"
         if (Test-Path $scriptPath) {
             chmod +x $scriptPath
@@ -139,22 +139,22 @@ switch ($OS) {
             
             & bash $scriptPath @params
         } else {
-            Write-Error "Script d'installation macOS non trouvé: $scriptPath"
+            Write-Error "Script d installation macOS non trouve: $scriptPath"
             exit 1
         }
     }
     
     default {
-        Write-Error "Système d'exploitation non supporté: $OS"
-        Write-Info "Systèmes supportés: Windows, Linux, macOS"
-        Write-Info "Veuillez utiliser directement le script approprié:"
+        Write-Error "Systeme d exploitation non supporte: $OS"
+        Write-Info "Systemes supportes: Windows, Linux, macOS"
+        Write-Info "Veuillez utiliser directement le script approprie:"
         Write-Info "  - Windows: .\install-snake-arena.ps1"
         Write-Info "  - Linux/Mac: ./install-snake-arena.sh"
         exit 1
     }
 }
 
-Write-Success "Installation terminée !"
-Write-Info "Utilisez maintenant le script de démarrage:"
+Write-Success "Installation terminee !"
+Write-Info "Utilisez maintenant le script de demarrage:"
 Write-Info "  - Windows: .\start-snake-arena.ps1"
 Write-Info "  - Linux/Mac: ./start-snake-arena.sh" 
