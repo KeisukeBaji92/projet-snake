@@ -6,8 +6,11 @@ import Home from './components/Home';
 import Sandbox from './components/Sandbox';
 import Login from './components/Login';
 import Register from './components/Register';
+import Profile from './components/Profile';
 import MyScripts from './components/MyScripts';
-import Tournaments from './components/Tournaments';
+import TournamentList from './components/TournamentList';
+import TournamentDetail from './components/TournamentDetail';
+import Leaderboard from './components/Leaderboard';
 import TestTournamentMatch from './components/TestTournamentMatch';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -31,8 +34,11 @@ function App() {
               <Route path="/sandbox" element={<Sandbox />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/scripts" element={<MyScripts />} />
-              <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/tournaments" element={<TournamentList />} />
+              <Route path="/tournament/:id" element={<TournamentDetail />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/test-match" element={<TestTournamentMatch />} />
             </Routes>
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ReplayViewer from './ReplayViewer';
 
-const Tournament = () => {
+const TournamentDetail = () => {
   const { id } = useParams();
   const [tournament, setTournament] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -248,21 +248,27 @@ const Tournament = () => {
                                 <span className={`badge bg-${participant.color} me-2`}>
                                   {participant.color}
                                 </span>
-                                <span className="flex-grow-1">{participant.user?.username}</span>
-                                {match.result?.finalScores && (
-                                  <span className="badge bg-light text-dark">
-                                    {participant.color === 'red' ? 
-                                      match.result.finalScores.red : 
-                                      match.result.finalScores.blue}
-                                  </span>
+                                <span>{participant.user?.username}</span>
+                                {match.result?.winner?.user === participant.user._id && (
+                                  <span className="text-success">🏆</span>
                                 )}
                               </div>
                             ))}
                           </div>
-                          
-                          {match.status === 'completed' && (
+                          <div className="mb-2">
+                            <small className="text-muted">
+                              Status: <span className={`badge ${
+                                match.status === 'completed' ? 'bg-success' :
+                                match.status === 'running' ? 'bg-warning' :
+                                match.status === 'pending' ? 'bg-secondary' : 'bg-danger'
+                              }`}>
+                                {match.status}
+                              </span>
+                            </small>
+                          </div>
+                          {match.status === 'completed' && match.replay && (
                             <button 
-                              className="btn btn-sm btn-primary"
+                              className="btn btn-sm btn-outline-primary"
                               onClick={() => setSelectedMatch(match)}
                             >
                               📺 Voir le replay
@@ -277,25 +283,49 @@ const Tournament = () => {
             </div>
           )}
 
-          {/* Replay du match sélectionné */}
-          {selectedMatch && (
-            <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-              <div className="modal-dialog modal-xl">
-                <div className="modal-content">
-                  <div className="modal-body">
-                    <ReplayViewer 
-                      replayData={selectedMatch.replay}
-                      onClose={() => setSelectedMatch(null)}
-                    />
-                  </div>
-                </div>
-              </div>
+          {/* Pas de matchs si le tournoi n'est pas démarré */}
+          {tournament.status === 'registering' && (
+            <div className="alert alert-info">
+              <h5>Tournoi en attente</h5>
+              <p>Le tournoi n'a pas encore démarré. Les matchs apparaîtront ici une fois le tournoi lancé.</p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal de replay */}
+      {selectedMatch && selectedMatch.replay && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-xl">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  Replay: {selectedMatch.phase} - {selectedMatch.participants[0]?.user?.username} vs {selectedMatch.participants[1]?.user?.username}
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setSelectedMatch(null)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <ReplayViewer 
+                  replayData={selectedMatch.getReplayData ? selectedMatch.getReplayData() : {
+                    matchId: selectedMatch._id,
+                    participants: selectedMatch.participants,
+                    settings: selectedMatch.settings,
+                    replay: selectedMatch.replay,
+                    result: selectedMatch.result
+                  }}
+                  onClose={() => setSelectedMatch(null)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Tournament; 
+export default TournamentDetail; 
