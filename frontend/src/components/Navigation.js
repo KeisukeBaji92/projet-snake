@@ -23,6 +23,9 @@ const Navigation = () => {
             <li className="nav-item">
               <Link className="nav-link" to="/">Accueil</Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" to="/leaderboard">🏆 Classement</Link>
+            </li>
             {user && (
               <>
                 <li className="nav-item">
