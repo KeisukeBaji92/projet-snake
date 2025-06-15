@@ -94,7 +94,7 @@ export default function SnakeGame({
         if (mode === 'script-vs-script' && userMove2) {
           move2 = userMove2(getGameState(false)) || 'left';
         } else if (mode === 'mirror') {
-          move2 = move1;
+          move2 = userMove(getGameState(false)) || 'left';
         } else {
           // Mode vs greedy : utiliser smartBot avec le bon état
           move2 = smartBot(getGameState(false), st.prevDir2) || 'left';
@@ -107,36 +107,37 @@ export default function SnakeGame({
       st.dir1 = secureDir(move1, st.prevDir1);
       st.dir2 = secureDir(move2, st.prevDir2);
 
-      // Appliquer les mouvements avec le nouveau système
-      const { newSnake: newSnake1, collision: col1, ate: ate1 } = moveSnake(st.snake1, st.dir1, st);
-      const { newSnake: newSnake2, collision: col2, ate: ate2 } = moveSnake(st.snake2, st.dir2, st);
+      // CORRECTION : Utiliser l'ancienne logique qui fonctionne
+      // Déplacer les serpents
+      move(st.snake1, st.dir1);
+      move(st.snake2, st.dir2);
 
-      // Mettre à jour l'état
-      st.snake1 = newSnake1;
-      st.snake2 = newSnake2;
-      st.score1 += (ate1 ? 1 : 0);
-      st.score2 += (ate2 ? 1 : 0);
-
-      // Générer nouvelle nourriture si mangée
-      if (ate1 || ate2) {
-        st.food = spawnFood(newSnake1, newSnake2, rows, cols);
-        setScore({ s1: st.score1, s2: st.score2 });
+      // Vérifier les collisions avec bombes en mode difficile
+      if (difficulty === 'hard') {
+        const head1 = st.snake1[0];
+        const head2 = st.snake2[0];
+        
+        const bomb1Hit = bombs.some(bomb => bomb.x === head1.x && bomb.y === head1.y);
+        const bomb2Hit = bombs.some(bomb => bomb.x === head2.x && bomb.y === head2.y);
+        
+        if (bomb1Hit && bomb2Hit) {
+          st.gameOver = true;
+          st.winner = 'draw';
+          console.log('💥 Les deux serpents ont touché des bombes !');
+        } else if (bomb1Hit) {
+          st.gameOver = true;
+          st.winner = 'snake2';
+          console.log('💥 Le serpent rouge a touché une bombe !');
+        } else if (bomb2Hit) {
+          st.gameOver = true;
+          st.winner = 'snake1';
+          console.log('💥 Le serpent bleu a touché une bombe !');
+        }
       }
 
-      // Gérer les collisions (mort)
-      if (col1 && col2) {
-        st.gameOver = true;
-        st.winner = 'draw';
-        console.log('💥 Les deux serpents sont morts !');
-      } else if (col1) {
-        st.gameOver = true;
-        st.winner = 'snake2';
-        console.log('💥 Le serpent rouge est mort !');
-      } else if (col2) {
-        st.gameOver = true;
-        st.winner = 'snake1';
-        console.log('💥 Le serpent bleu est mort !');
-      }
+      // Gérer les collisions normales (nourriture, murs, serpents)
+      const changed = handleCollisions(st, rows, cols);
+      if (changed) setScore({ s1: st.score1, s2: st.score2 });
 
       draw(ctx, st, rows, cols);
     }, TICK);
@@ -396,48 +397,6 @@ export default function SnakeGame({
       }
     }
   };
-
-  function moveSnake(snake, direction, st) {
-    const head = { ...snake[0] };
-    
-    switch(direction) {
-      case 'up': head.x--; break;
-      case 'down': head.x++; break;
-      case 'left': head.y--; break;
-      case 'right': head.y++; break;
-    }
-
-    // Vérifier collision avec les murs
-    if (head.x < 0 || head.x >= rows || head.y < 0 || head.y >= cols) {
-      console.log('💥 Collision avec un mur !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier collision avec les bombes en mode difficile
-    if (difficulty === 'hard' && checkBombCollision(head)) {
-      console.log('💥 COLLISION AVEC UNE BOMBE !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier collision avec soi-même
-    if (isPositionOccupied(head, snake.slice(1))) {
-      console.log('💥 Collision avec soi-même !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier collision avec l'autre serpent
-    const otherSnake = snake === st.snake1 ? st.snake2 : st.snake1;
-    if (isPositionOccupied(head, otherSnake)) {
-      console.log('💥 Collision avec l\'autre serpent !', head);
-      return { newSnake: snake, collision: true, ate: false };
-    }
-
-    // Vérifier si on mange de la nourriture
-    const ate = head.x === st.food.x && head.y === st.food.y;
-    const newSnake = [head, ...snake.slice(0, ate ? snake.length : snake.length - 1)];
-
-    return { newSnake, collision: false, ate };
-  }
 
   return (
     <div style={{ marginTop: 20, position: 'relative' }}>

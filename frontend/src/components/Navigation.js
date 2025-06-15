@@ -23,6 +23,9 @@ const Navigation = () => {
             <li className="nav-item">
               <Link className="nav-link" to="/">Accueil</Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" to="/leaderboard">🏆 Classement</Link>
+            </li>
             {user && (
               <>
                 <li className="nav-item">
@@ -34,9 +37,12 @@ const Navigation = () => {
                 <li className="nav-item">
                   <Link className="nav-link" to="/tournaments">Tournois</Link>
                 </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/replays">🎬 Replays</Link>
+                </li>
                 {user.role === 'admin' && (
                   <li className="nav-item">
-                    <Link className="nav-link" to="/test-match">🧪 Test Match</Link>
+                    <Link className="nav-link" to="/admin">👑 Administration</Link>
                   </li>
                 )}
               </>

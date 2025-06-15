@@ -286,8 +286,9 @@ class TournamentService {
       throw new Error('Tournoi non trouvé');
     }
 
-    if (tournament.status !== 'registering') {
-      throw new Error('Le tournoi ne peut plus être supprimé');
+    // Permettre la suppression des tournois en inscription ET terminés
+    if (tournament.status !== 'registering' && tournament.status !== 'completed') {
+      throw new Error('Seuls les tournois en inscription ou terminés peuvent être supprimés');
     }
 
     await Tournament.deleteOne({ _id: id });
